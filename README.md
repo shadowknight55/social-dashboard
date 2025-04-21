@@ -27,3 +27,7 @@ Other tools used:
 - Tailwind CSS for responsive design
 - Recharts for visualizations
 - Vercel for deployment
+
+
+🛡️ License
+MIT License — free to use, modify, and distribute.
