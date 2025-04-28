@@ -54,9 +54,8 @@ export default function Settings() {
             </h1>
           </div>
           <nav className="flex gap-6">
-            <Link href="/" className="hover:text-yellow-400 transition-colors">Home</Link>
-            <Link href="/profile" className="hover:text-yellow-400 transition-colors">Profile</Link>
-            <Link href="/settings" className="text-yellow-400 transition-colors">Settings</Link>
+            <button onClick={() => window.location.href = '/'} className="hover:text-yellow-400 transition-colors px-4 py-2 rounded-lg bg-black/30 hover:bg-yellow-400 hover:text-black">Home</button>
+            <button onClick={() => window.location.href = '/settings'} className="text-yellow-400 transition-colors px-4 py-2 rounded-lg bg-black/30 hover:bg-yellow-400 hover:text-black">Settings</button>
           </nav>
         </header>
 
@@ -108,7 +107,7 @@ export default function Settings() {
                   name="youtubeChartType"
                   value={settings.youtubeChartType}
                   onChange={handleChange}
-                  className="w-full bg-transparent border border-purple-500 rounded-lg p-2 text-white"
+                  className="w-full bg-white border border-purple-500 rounded-lg p-2 text-black shadow-lg"
                 >
                   <option value="pie">Pie Chart</option>
                   <option value="bar">Bar Chart</option>
@@ -124,7 +123,7 @@ export default function Settings() {
                   name="twitchChartType"
                   value={settings.twitchChartType}
                   onChange={handleChange}
-                  className="w-full bg-transparent border border-purple-500 rounded-lg p-2 text-white"
+                  className="w-full bg-white border border-purple-500 rounded-lg p-2 text-black shadow-lg"
                 >
                   <option value="pie">Pie Chart</option>
                   <option value="bar">Bar Chart</option>

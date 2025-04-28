@@ -23,9 +23,8 @@ export default function Home() {
             </h1>
           </div>
           <nav className="flex gap-6">
-            <Link href="/" className="text-yellow-400 transition-colors">Home</Link>
-            <Link href="/profile" className="hover:text-yellow-400 transition-colors">Profile</Link>
-            <Link href="/settings" className="hover:text-yellow-400 transition-colors">Settings</Link>
+            <button onClick={() => window.location.href = '/'} className="text-yellow-400 transition-colors px-4 py-2 rounded-lg bg-black/30 hover:bg-yellow-400 hover:text-black">Home</button>
+            <button onClick={() => window.location.href = '/settings'} className="hover:text-yellow-400 transition-colors px-4 py-2 rounded-lg bg-black/30 hover:bg-yellow-400 hover:text-black">Settings</button>
           </nav>
         </header>
 

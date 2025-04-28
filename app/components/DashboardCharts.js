@@ -149,7 +149,7 @@ export default function DashboardCharts() {
         <div className="aspect-square">
           {renderChart(chartTypes.youtubeChartType, true)}
         </div>
-        <select className="mt-4 w-full bg-transparent border border-purple-500 rounded-lg p-2 text-white">
+        <select className="mt-4 w-full bg-white border border-purple-500 rounded-lg p-2 text-black shadow-lg">
           <option value="daily">Daily Stats</option>
           <option value="weekly">Weekly Stats</option>
           <option value="monthly">Monthly Stats</option>
@@ -162,7 +162,7 @@ export default function DashboardCharts() {
         <div className="aspect-square">
           {renderChart(chartTypes.twitchChartType, false)}
         </div>
-        <select className="mt-4 w-full bg-transparent border border-purple-500 rounded-lg p-2 text-white">
+        <select className="mt-4 w-full bg-white border border-purple-500 rounded-lg p-2 text-black shadow-lg">
           <option value="daily">Daily Stats</option>
           <option value="weekly">Weekly Stats</option>
           <option value="monthly">Monthly Stats</option>
