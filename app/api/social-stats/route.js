@@ -16,9 +16,10 @@ export async function GET(request) {
     const db = client.db('social_dashboard');
     const collection = db.collection('social_stats');
 
-    // Get the requested platforms from the URL
+    // Get the requested platforms and refresh parameter from the URL
     const { searchParams } = new URL(request.url);
     const requestedPlatforms = searchParams.get('platforms')?.split(',') || [];
+    const shouldRefresh = searchParams.get('refresh') === 'true';
 
     // Get active platforms from settings
     const settings = await collection.findOne({ type: 'settings' }) || {};
@@ -35,14 +36,14 @@ export async function GET(request) {
       return acc;
     }, {});
 
-    // Return stats, generating new ones for missing platforms
+    // Return stats, generating new ones for missing or refreshed platforms
     const stats = {};
     const updatesNeeded = [];
     
     activeCharts.forEach(platform => {
       if (platform) {
-        // If platform doesn't have stats, generate them
-        if (!statsMap[platform]) {
+        // Generate new stats if platform is missing or should be refreshed
+        if (!statsMap[platform] || (shouldRefresh && requestedPlatforms.includes(platform))) {
           const newStats = generateRandomStats(platform);
           stats[platform] = newStats;
           // Queue an update to save these stats
@@ -62,11 +63,11 @@ export async function GET(request) {
         collection.updateOne(
           { type: 'platform_stats', platform: update.platform },
           { 
-            $setOnInsert: { 
+            $set: { 
               type: 'platform_stats',
               platform: update.platform,
               stats: update.stats,
-              createdAt: new Date().toISOString()
+              updatedAt: new Date().toISOString()
             }
           },
           { upsert: true }

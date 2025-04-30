@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DashboardCharts from "@/app/components/DashboardCharts";
 
 export default function Home() {
@@ -11,20 +11,29 @@ export default function Home() {
     following: 0
   });
 
+  // Function to calculate totals from stats
+  const calculateTotals = useCallback((data) => {
+    return Object.values(data).reduce((acc, platformStats) => {
+      if (!platformStats) return acc;
+      return {
+        followers: acc.followers + (platformStats.followers || 0),
+        following: acc.following + (platformStats.subscribers || 0) // Using subscribers as "following" metric
+      };
+    }, { followers: 0, following: 0 });
+  }, []);
+
+  // Memoize the onStatsUpdate callback
+  const handleStatsUpdate = useCallback((stats) => {
+    const newTotals = calculateTotals(stats);
+    setTotalStats(newTotals);
+  }, [calculateTotals]);
+
   useEffect(() => {
     const fetchTotalStats = async () => {
       try {
         const response = await fetch('/api/social-stats');
         const data = await response.json();
-        
-        // Calculate totals from all platforms
-        const totals = Object.values(data).reduce((acc, platformStats) => {
-          return {
-            followers: acc.followers + (platformStats.followers || 0),
-            following: acc.following + (platformStats.subscribers || 0) // Using subscribers as "following" metric
-          };
-        }, { followers: 0, following: 0 });
-
+        const totals = calculateTotals(data);
         setTotalStats(totals);
       } catch (error) {
         console.error('Error fetching total stats:', error);
@@ -32,7 +41,21 @@ export default function Home() {
     };
 
     fetchTotalStats();
-  }, []);
+
+    // Listen for stat updates from DashboardCharts
+    const handleStatsUpdateEvent = (event) => {
+      if (event.detail && event.detail.stats) {
+        handleStatsUpdate(event.detail.stats);
+      }
+    };
+
+    // Add event listener for stats updates
+    window.addEventListener('statsUpdated', handleStatsUpdateEvent);
+
+    return () => {
+      window.removeEventListener('statsUpdated', handleStatsUpdateEvent);
+    };
+  }, [calculateTotals, handleStatsUpdate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black text-white">
@@ -73,7 +96,7 @@ export default function Home() {
           </div>
 
           {/* Charts Section */}
-          <DashboardCharts />
+          <DashboardCharts onStatsUpdate={handleStatsUpdate} />
         </div>
       </div>
     </div>

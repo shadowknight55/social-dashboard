@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Pie, Bar, Line, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement } from 'chart.js';
 
@@ -77,77 +77,174 @@ const getRandomColors = () => {
   };
 };
 
-export default function DashboardCharts() {
+export default function DashboardCharts({ onStatsUpdate }) {
   const [activeCharts, setActiveCharts] = useState(['youtube', 'twitch']);
   const [chartTypes, setChartTypes] = useState({});
   const [stats, setStats] = useState({});
   const [platformColors, setPlatformColors] = useState({});
+  const [lastRefreshed, setLastRefreshed] = useState({});
+  const [showNotification, setShowNotification] = useState(false);
+  const [refreshedPlatform, setRefreshedPlatform] = useState('');
+  const [notificationSound, setNotificationSound] = useState(null);
+  const [refreshRate, setRefreshRate] = useState(5 * 60 * 1000); // Default 5 minutes
 
+  // Initialize Audio on client side
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Get settings from localStorage
-        let settings = {};
-        const savedSettings = localStorage.getItem('dashboardSettings');
-        if (savedSettings) {
-          settings = JSON.parse(savedSettings);
-          setChartTypes(settings.chartTypes || {});
-          setActiveCharts(settings.activeCharts || ['youtube', 'twitch']);
-          setPlatformColors(settings.platformColors || {});
-        }
+    const audio = new Audio('/mp3/beepgt.mp3');
+    audio.volume = 0.5; // Set volume to 50%
+    audio.preload = 'auto'; // Preload the sound
+    setNotificationSound(audio);
+  }, []);
 
-        // Fetch stats from API with current active charts
-        const currentActiveCharts = settings.activeCharts || ['youtube', 'twitch'];
-        const response = await fetch(`/api/social-stats?platforms=${currentActiveCharts.join(',')}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch stats');
-        }
-        const data = await response.json();
-        
-        // Generate colors for new platforms
-        const updatedPlatformColors = { ...platformColors };
-        currentActiveCharts.forEach(platform => {
-          if (!updatedPlatformColors[platform]) {
-            updatedPlatformColors[platform] = getRandomColors();
-          }
-        });
-        setPlatformColors(updatedPlatformColors);
-
-        // Save updated settings
-        const updatedSettings = {
-          ...settings,
-          platformColors: updatedPlatformColors,
-          activeCharts: currentActiveCharts
-        };
-        localStorage.setItem('dashboardSettings', JSON.stringify(updatedSettings));
-        setStats(data);
-
-        // Save active charts to database
-        await fetch('/api/social-stats', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'settings',
-            activeCharts: currentActiveCharts
-          }),
-        });
-      } catch (error) {
-        console.error('Error:', error);
+  // Load settings and set up refresh rate monitoring
+  useEffect(() => {
+    const loadSettings = () => {
+      const savedSettings = localStorage.getItem('dashboardSettings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        setChartTypes(parsedSettings.chartTypes || {});
+        setActiveCharts(parsedSettings.activeCharts || ['youtube', 'twitch']);
+        setPlatformColors(parsedSettings.platformColors || {});
+        setRefreshRate((parsedSettings.refreshRate || 5) * 60 * 1000);
       }
     };
 
-    fetchData();
+    loadSettings();
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'dashboardSettings') {
+        const newSettings = JSON.parse(e.newValue);
+        if (newSettings.refreshRate) {
+          setRefreshRate(newSettings.refreshRate * 60 * 1000);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const saveChartType = (platform, type) => {
-    const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
-    const newChartTypes = { ...chartTypes, [platform]: type };
-    settings.chartTypes = newChartTypes;
-    localStorage.setItem('dashboardSettings', JSON.stringify(settings));
-    setChartTypes(newChartTypes);
-  };
+  // Handle notifications
+  const showRefreshNotification = useCallback((platform) => {
+    console.log('Showing notification for:', platform);
+    // Play sound first
+    if (notificationSound) {
+      notificationSound.currentTime = 0; // Reset sound to start
+      notificationSound.play().catch(error => {
+        console.error('Error playing notification sound:', error);
+      });
+    }
+
+    // Show visual notification
+    setRefreshedPlatform(platform);
+    setShowNotification(true);
+    setTimeout(() => setShowNotification(false), 3000);
+  }, [notificationSound]);
+
+  // Fetch data for a single platform
+  const refreshPlatform = useCallback(async (platform) => {
+    console.log('Refreshing platform:', platform);
+    try {
+      const response = await fetch(`/api/social-stats?platforms=${platform}&refresh=true`);
+      if (!response.ok) throw new Error('Failed to fetch stats');
+      const data = await response.json();
+      
+      // Only update the stats for the specific platform
+      setStats(prevStats => {
+        const newStats = {
+          ...prevStats,
+          [platform]: data[platform]
+        };
+        return newStats;
+      });
+      
+      setLastRefreshed(prev => ({
+        ...prev,
+        [platform]: new Date().toISOString()
+      }));
+      
+      showRefreshNotification(platform);
+    } catch (error) {
+      console.error(`Error refreshing ${platform} stats:`, error);
+    }
+  }, [showRefreshNotification]);
+
+  // Effect to handle stats updates
+  useEffect(() => {
+    if (Object.keys(stats).length > 0) {
+      // Notify parent component of stats update
+      onStatsUpdate?.(stats);
+
+      // Also dispatch event for any other listeners
+      const event = new CustomEvent('statsUpdated', {
+        detail: { stats }
+      });
+      window.dispatchEvent(event);
+    }
+  }, [stats, onStatsUpdate]);
+
+  // Memoize the fetchInitialData function
+  const fetchInitialData = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/social-stats?platforms=${activeCharts.join(',')}`);
+      if (!response.ok) throw new Error('Failed to fetch stats');
+      const data = await response.json();
+      setStats(data);
+      
+      // Notify parent of initial stats
+      onStatsUpdate?.(data);
+      
+      const now = new Date().toISOString();
+      const initialRefreshTimes = {};
+      activeCharts.forEach(platform => {
+        initialRefreshTimes[platform] = now;
+      });
+      setLastRefreshed(initialRefreshTimes);
+    } catch (error) {
+      console.error('Error fetching initial stats:', error);
+    }
+  }, [activeCharts, onStatsUpdate]);
+
+  // Initial data fetch
+  useEffect(() => {
+    if (activeCharts.length > 0) {
+      fetchInitialData();
+    }
+  }, [fetchInitialData]);
+
+  // Set up refresh interval for random chart selection
+  useEffect(() => {
+    console.log(`Setting up refresh interval with rate: ${refreshRate}ms`);
+    let lastRefreshedPlatform = null;
+    
+    const interval = setInterval(() => {
+      if (activeCharts.length > 0) {
+        // Randomly select one chart to refresh, but not the same one twice in a row
+        let randomIndex;
+        let platformToRefresh;
+        do {
+          randomIndex = Math.floor(Math.random() * activeCharts.length);
+          platformToRefresh = activeCharts[randomIndex];
+        } while (platformToRefresh === lastRefreshedPlatform && activeCharts.length > 1);
+        
+        lastRefreshedPlatform = platformToRefresh;
+        console.log(`Refreshing random platform: ${platformToRefresh}`);
+        refreshPlatform(platformToRefresh);
+      }
+    }, refreshRate);
+
+    return () => clearInterval(interval);
+  }, [activeCharts, refreshRate, refreshPlatform]);
+
+  const saveChartType = useCallback((platform, type) => {
+    setChartTypes(prev => {
+      const newChartTypes = { ...prev, [platform]: type };
+      const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
+      const newSettings = { ...settings, chartTypes: newChartTypes };
+      localStorage.setItem('dashboardSettings', JSON.stringify(newSettings));
+      return newChartTypes;
+    });
+  }, []);
 
   const getChartData = (platform) => {
     const data = stats[platform] || {};
@@ -191,20 +288,48 @@ export default function DashboardCharts() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-4 relative">
+      {showNotification && (
+        <div 
+          className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50 animate-notification"
+          onClick={() => {
+            // Play sound on click for testing
+            if (notificationSound) {
+              notificationSound.currentTime = 0;
+              notificationSound.play().catch(console.error);
+            }
+          }}
+        >
+          <div className="flex items-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>
+              {refreshedPlatform.charAt(0).toUpperCase() + refreshedPlatform.slice(1)} stats refreshed!
+            </span>
+          </div>
+        </div>
+      )}
       {activeCharts.map((platform) => (
         <div key={platform} className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
-          <h2 
-            onClick={() => window.location.href = `/analytics/${platform}`}
-            className="text-2xl font-bold mb-4 text-center cursor-pointer hover:text-purple-400 transition-colors"
-          >
-            {platform.charAt(0).toUpperCase() + platform.slice(1).replace(/-/g, ' ')} Stats
-          </h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 
+              onClick={() => window.location.href = `/analytics/${platform}`}
+              className="text-2xl font-bold cursor-pointer hover:text-purple-400 transition-colors"
+            >
+              {platform.charAt(0).toUpperCase() + platform.slice(1).replace(/-/g, ' ')} Stats
+            </h2>
+            {lastRefreshed[platform] && (
+              <span className="text-sm text-gray-400">
+                Last updated: {new Date(lastRefreshed[platform]).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
           <div className="h-[300px] w-full">
             {renderChart(platform)}
           </div>
           <select 
-            className="mt-4 w-full bg-white border border-purple-500 rounded-lg p-2 text-black shadow-lg text-lg"
+            className="mt-4 w-full bg-white/90 backdrop-blur-sm border border-purple-500 rounded-lg p-2 text-black shadow-lg text-lg"
             value={chartTypes[platform] || 'pie'}
             onChange={(e) => saveChartType(platform, e.target.value)}
           >

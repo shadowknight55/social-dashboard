@@ -30,6 +30,7 @@ export default function Settings() {
   const [activeCharts, setActiveCharts] = useState(['youtube', 'twitch']);
   const [newPlatformName, setNewPlatformName] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
+  const [refreshRate, setRefreshRate] = useState('5');
   const [platformColors, setPlatformColors] = useState({
     youtube: {
       background: ['rgba(255, 0, 0, 0.7)', 'rgba(255, 99, 132, 0.7)', 'rgba(255, 159, 64, 0.7)'],
@@ -47,19 +48,43 @@ export default function Settings() {
       const settings = JSON.parse(savedSettings);
       setActiveCharts(settings.activeCharts || ['youtube', 'twitch']);
       setPlatformColors(settings.platformColors || platformColors);
+      setRefreshRate(settings.refreshRate || '5');
     }
   }, []);
 
   const showStatus = (message, isError = false) => {
     setStatusMessage(message);
-    setTimeout(() => setStatusMessage(''), 3000); // Clear after 3 seconds
+    setTimeout(() => setStatusMessage(''), 3000);
   };
 
-  const saveSettings = (newActiveCharts, newPlatformColors) => {
+  const saveSettings = (newActiveCharts, newPlatformColors, newRefreshRate) => {
     const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
     settings.activeCharts = newActiveCharts;
     settings.platformColors = newPlatformColors;
+    settings.refreshRate = newRefreshRate || refreshRate;
     localStorage.setItem('dashboardSettings', JSON.stringify(settings));
+
+    // Save to database
+    fetch('/api/social-stats', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'settings',
+        activeCharts: newActiveCharts,
+        refreshRate: newRefreshRate || refreshRate,
+        updatedAt: new Date().toISOString()
+      }),
+    }).catch(error => {
+      console.error('Error saving settings:', error);
+    });
+  };
+
+  const handleRefreshRateChange = (value) => {
+    setRefreshRate(value);
+    saveSettings(activeCharts, platformColors, value);
+    showStatus(`Refresh rate updated to ${value} minutes`);
   };
 
   const addNewPlatform = async () => {
@@ -80,7 +105,7 @@ export default function Settings() {
       newColors[platform] = getRandomColors();
       setPlatformColors(newColors);
       
-      saveSettings(newActiveCharts, newColors);
+      saveSettings(newActiveCharts, newColors, refreshRate);
       
       const response = await fetch('/api/social-stats', {
         method: 'POST',
@@ -113,7 +138,7 @@ export default function Settings() {
     try {
       const newActiveCharts = activeCharts.filter(p => p !== platform);
       setActiveCharts(newActiveCharts);
-      saveSettings(newActiveCharts, platformColors);
+      saveSettings(newActiveCharts, platformColors, refreshRate);
 
       const response = await fetch('/api/social-stats', {
         method: 'POST',
@@ -206,12 +231,19 @@ export default function Settings() {
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold mb-2">Data Refresh Rate</h3>
-            <select className="w-full bg-white/10 text-white border border-purple-500 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <select 
+              className="w-full bg-white/10 text-white border border-purple-500 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              value={refreshRate}
+              onChange={(e) => handleRefreshRateChange(e.target.value)}
+            >
               <option value="5">Every 5 minutes</option>
               <option value="15">Every 15 minutes</option>
               <option value="30">Every 30 minutes</option>
               <option value="60">Every hour</option>
             </select>
+            <p className="text-sm text-gray-400 mt-2">
+              Charts will refresh with new random data after the selected interval
+            </p>
           </div>
 
           <div>
