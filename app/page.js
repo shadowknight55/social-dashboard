@@ -2,14 +2,43 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import DashboardCharts from "@/app/components/DashboardCharts";
 
 export default function Home() {
+  const [totalStats, setTotalStats] = useState({
+    followers: 0,
+    following: 0
+  });
+
+  useEffect(() => {
+    const fetchTotalStats = async () => {
+      try {
+        const response = await fetch('/api/social-stats');
+        const data = await response.json();
+        
+        // Calculate totals from all platforms
+        const totals = Object.values(data).reduce((acc, platformStats) => {
+          return {
+            followers: acc.followers + (platformStats.followers || 0),
+            following: acc.following + (platformStats.subscribers || 0) // Using subscribers as "following" metric
+          };
+        }, { followers: 0, following: 0 });
+
+        setTotalStats(totals);
+      } catch (error) {
+        console.error('Error fetching total stats:', error);
+      }
+    };
+
+    fetchTotalStats();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black text-white">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <header className="flex items-center justify-between mb-12">
+        <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Image
               src="/Astrobear.png"
@@ -28,24 +57,23 @@ export default function Home() {
           </nav>
         </header>
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* YouTube Chart */}
-          <DashboardCharts />
-
-          {/* Central Stats */}
-          <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm flex flex-col justify-center">
-            <div className="text-center space-y-6">
-              <div>
-                <h3 className="text-2xl font-bold mb-2">Total Followers</h3>
-                <p className="text-4xl font-bold text-yellow-400">3,700</p>
+        <div className="flex flex-col gap-8">
+          {/* Total Stats Bar */}
+          <div className="bg-black/30 rounded-xl p-4 backdrop-blur-sm">
+            <div className="flex justify-around items-center">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-1">Total Followers</h3>
+                <p className="text-2xl font-bold text-yellow-400">{totalStats.followers.toLocaleString()}</p>
               </div>
-              <div>
-                <h3 className="text-2xl font-bold mb-2">Following</h3>
-                <p className="text-4xl font-bold text-yellow-400">890</p>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-1">Following</h3>
+                <p className="text-2xl font-bold text-yellow-400">{totalStats.following.toLocaleString()}</p>
               </div>
             </div>
           </div>
+
+          {/* Charts Section */}
+          <DashboardCharts />
         </div>
       </div>
     </div>
