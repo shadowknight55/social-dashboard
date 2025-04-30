@@ -24,13 +24,55 @@ export async function GET(request) {
     const settings = await collection.findOne({ type: 'settings' }) || {};
     const activeCharts = [...new Set([...settings.activeCharts || ['youtube', 'twitch'], ...requestedPlatforms])];
 
-    // Generate random stats for all active platforms
+    // Get existing stats from database
+    const existingStats = await collection.find({ 
+      type: 'platform_stats'
+    }).toArray();
+
+    // Convert to map for easy lookup
+    const statsMap = existingStats.reduce((acc, stat) => {
+      acc[stat.platform] = stat.stats;
+      return acc;
+    }, {});
+
+    // Return stats, generating new ones for missing platforms
     const stats = {};
+    const updatesNeeded = [];
+    
     activeCharts.forEach(platform => {
-      if (platform) {  // Only generate stats if platform is not empty
-        stats[platform] = generateRandomStats(platform);
+      if (platform) {
+        // If platform doesn't have stats, generate them
+        if (!statsMap[platform]) {
+          const newStats = generateRandomStats(platform);
+          stats[platform] = newStats;
+          // Queue an update to save these stats
+          updatesNeeded.push({
+            platform,
+            stats: newStats
+          });
+        } else {
+          stats[platform] = statsMap[platform];
+        }
       }
     });
+
+    // Save any newly generated stats to the database
+    if (updatesNeeded.length > 0) {
+      await Promise.all(updatesNeeded.map(update => 
+        collection.updateOne(
+          { type: 'platform_stats', platform: update.platform },
+          { 
+            $setOnInsert: { 
+              type: 'platform_stats',
+              platform: update.platform,
+              stats: update.stats,
+              createdAt: new Date().toISOString()
+            }
+          },
+          { upsert: true }
+        )
+      ));
+    }
 
     client.close();
     return Response.json(stats);
@@ -48,21 +90,33 @@ export async function POST(request) {
     const collection = db.collection('social_stats');
 
     if (data.type === 'settings') {
+      // Get current settings to compare
+      const currentSettings = await collection.findOne({ type: 'settings' }) || { activeCharts: [] };
+      const newPlatforms = data.activeCharts.filter(p => !currentSettings.activeCharts.includes(p));
+
+      // Generate and save stats for new platforms
+      for (const platform of newPlatforms) {
+        const stats = generateRandomStats(platform);
+        await collection.updateOne(
+          { type: 'platform_stats', platform },
+          { 
+            $setOnInsert: { 
+              type: 'platform_stats',
+              platform,
+              stats,
+              createdAt: new Date().toISOString()
+            }
+          },
+          { upsert: true }
+        );
+      }
+
       // Update settings
       await collection.updateOne(
         { type: 'settings' },
         { $set: data },
         { upsert: true }
       );
-    } else {
-      // Update platform stats
-      for (const [platform, stats] of Object.entries(data)) {
-        await collection.updateOne(
-          { platform },
-          { $set: { platform, stats } },
-          { upsert: true }
-        );
-      }
     }
 
     client.close();

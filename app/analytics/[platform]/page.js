@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -24,10 +25,11 @@ ChartJS.register(
   Legend
 );
 
-export default function PlatformAnalytics({ params }) {
+export default function PlatformAnalytics() {
+  const params = useParams();
+  const platform = params.platform;
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const platform = params.platform;
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -47,6 +49,7 @@ export default function PlatformAnalytics({ params }) {
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
