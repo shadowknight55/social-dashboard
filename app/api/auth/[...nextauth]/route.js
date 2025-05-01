@@ -4,17 +4,22 @@ import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 
 export const authOptions = {
-
-    adapter: MongoDBAdapter(clientPromise),
-      providers: [
+    providers: [
         GoogleProvider({
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         }),
-      ],
-      secret: process.env.NEXTAUTH_SECRET,
-  };
+    ],
+    adapter: MongoDBAdapter(clientPromise),
+    secret: process.env.NEXTAUTH_SECRET,
+    session: {
+        strategy: 'jwt',
+    },
+    pages: {
+        signIn: '/signin',
+        error: '/signin',
+    },
+};
 
-    const handler = NextAuth(authOptions);
-
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

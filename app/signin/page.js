@@ -11,7 +11,7 @@ export default function SignIn() {
     const [isLoading, setIsLoading] = useState(false);  // Tracks loading state
     const [error, setError] = useState('');  // Stores error messages
 
-const handleGoogleSignIn = async () => {
+    const handleGoogleSignIn = async () => {
         setIsLoading(true);  // Start loading state
         setError('');  // Clear any previous errors
         try {
@@ -32,15 +32,18 @@ const handleGoogleSignIn = async () => {
             setIsLoading(false);  // Reset loading state
         }
     };
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-md">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-black">
+            <div className="max-w-md w-full space-y-8 p-10 bg-black/30 backdrop-blur-sm rounded-xl shadow-2xl">
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold">Cozy Reads</h1>
-                    <h2 className="mt-2 text-lg text-gray-600">Sign in to manage your inventory</h2>
+                    <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-yellow-500">
+                        Astro's Social Board
+                    </h1>
+                    <h2 className="mt-2 text-lg text-gray-300">Sign in to manage your social media</h2>
                 </div>
                 {error && (
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 my-4" role="alert">
+                    <div className="bg-red-500/20 border-l-4 border-red-500 text-red-200 p-4 rounded" role="alert">
                         <p>{error}</p>
                     </div>
                 )}
@@ -48,17 +51,27 @@ const handleGoogleSignIn = async () => {
                     <button
                         onClick={handleGoogleSignIn}
                         disabled={isLoading}
-                        className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                        className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-all duration-200 ${
                             isLoading 
-                                ? 'bg-gray-400 cursor-not-allowed' 
-                                : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                                ? 'bg-gray-600 cursor-not-allowed' 
+                                : 'bg-yellow-500 hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500'
                         }`}
                     >
-                        {isLoading ? 'Signing in...' : 'Sign in with Google'}
+                        {isLoading ? (
+                            <div className="flex items-center">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                Signing in...
+                            </div>
+                        ) : (
+                            'Sign in with Google'
+                        )}
                     </button>
                     <div className="text-sm text-center">
-                        <p className="text-gray-500">
-                            By signing in, you agree to our Terms of Service and Privacy Policy.
+                        <p className="text-gray-400">
+                            By signing in, you agree to our{' '}
+                            <a href="/terms" className="text-yellow-400 hover:text-yellow-300">Terms of Service</a>
+                            {' '}and{' '}
+                            <a href="/privacy" className="text-yellow-400 hover:text-yellow-300">Privacy Policy</a>
                         </p>
                     </div>
                 </div>

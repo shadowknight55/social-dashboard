@@ -4,8 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import DashboardCharts from "@/app/components/DashboardCharts";
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 export default function Home() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
   const [totalStats, setTotalStats] = useState({
     followers: 0,
     views: 0
@@ -27,6 +32,12 @@ export default function Home() {
     const newTotals = calculateTotals(stats);
     setTotalStats(newTotals);
   }, [calculateTotals]);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/signin');
+    }
+  }, [status, router]);
 
   useEffect(() => {
     const fetchTotalStats = async () => {
@@ -56,6 +67,23 @@ export default function Home() {
       window.removeEventListener('statsUpdated', handleStatsUpdateEvent);
     };
   }, [calculateTotals, handleStatsUpdate]);
+
+  // Show loading state while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, don't render anything (will redirect)
+  if (!session) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black text-white">
