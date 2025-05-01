@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import DashboardCharts from "@/app/components/DashboardCharts";
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 
 export default function Home() {
   const router = useRouter();
@@ -105,6 +105,12 @@ export default function Home() {
           <nav className="flex gap-6">
             <button onClick={() => window.location.href = '/'} className="text-yellow-400 transition-colors px-4 py-2 rounded-lg bg-black/30 hover:bg-yellow-400 hover:text-black">Home</button>
             <button onClick={() => window.location.href = '/settings'} className="hover:text-yellow-400 transition-colors px-4 py-2 rounded-lg bg-black/30 hover:bg-yellow-400 hover:text-black">Settings</button>
+            <button 
+              onClick={() => signOut({ callbackUrl: '/signin' })} 
+              className="hover:text-red-400 transition-colors px-4 py-2 rounded-lg bg-black/30 hover:bg-red-400 hover:text-black"
+            >
+              Logout
+            </button>
           </nav>
         </header>
 
