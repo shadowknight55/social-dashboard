@@ -35,7 +35,7 @@ In the fragmented world of social media, managing multiple platforms with discon
 
 ## 🔧 Tech Stack
 
-| Frontend | Backend | Data | Auth | AI |
+| Frontend | Backend | Data | Auth |
 |----------|---------|------|------|----|
 | Next.js + React | Node.js + Express | MongoDB | NextAuth.js | OpenAI API |
 
