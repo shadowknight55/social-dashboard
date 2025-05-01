@@ -87,6 +87,36 @@ export default function PlatformAnalytics() {
     },
   };
 
+  const getChartData = (stats) => {
+    const metrics = {
+      followers: stats.followers || 0,
+      views: stats.views || 0,
+      likes: stats.likes || 0,
+      shares: stats.shares || 0
+    };
+
+    return {
+      labels: ['Followers', 'Views', 'Likes', 'Shares'],
+      datasets: [{
+        label: 'Platform Metrics',
+        data: Object.values(metrics),
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.5)',
+          'rgba(54, 162, 235, 0.5)',
+          'rgba(255, 206, 86, 0.5)',
+          'rgba(75, 192, 192, 0.5)'
+        ],
+        borderColor: [
+          'rgba(255, 99, 132, 1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)'
+        ],
+        borderWidth: 1
+      }]
+    };
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black text-white p-8">
@@ -108,23 +138,7 @@ export default function PlatformAnalytics() {
   }
 
   // Create data for the overview chart
-  const overviewData = {
-    labels: ['Followers', 'Subscribers', 'Views', 'Likes', 'Shares'],
-    datasets: [
-      {
-        label: 'Current Stats',
-        data: [
-          stats.followers,
-          stats.subscribers,
-          stats.views,
-          stats.likes,
-          stats.shares,
-        ],
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-      },
-    ],
-  };
+  const overviewData = getChartData(stats);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black text-white p-8">
@@ -170,29 +184,40 @@ export default function PlatformAnalytics() {
         {/* Detailed Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
+            <h3 className="text-xl font-semibold mb-4">Audience Metrics</h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-gray-400">Followers</p>
+                <p className="text-2xl font-bold text-purple-400">{stats.followers.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Views</p>
+                <p className="text-2xl font-bold text-blue-400">{stats.views.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Engagement Rate</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {((stats.likes + stats.shares) / stats.followers * 100).toFixed(2)}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
             <h3 className="text-xl font-semibold mb-4">Engagement Metrics</h3>
             <div className="space-y-4">
               <div>
                 <p className="text-gray-400">Likes</p>
-                <p className="text-2xl font-bold text-yellow-400">{stats.likes.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-pink-400">{stats.likes.toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-gray-400">Shares</p>
-                <p className="text-2xl font-bold text-pink-400">{stats.shares.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
-            <h3 className="text-xl font-semibold mb-4">Audience Metrics</h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400">Subscribers</p>
-                <p className="text-2xl font-bold text-orange-400">{stats.subscribers.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-yellow-400">{stats.shares.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-gray-400">Views per Subscriber</p>
+                <p className="text-gray-400">Views per Follower</p>
                 <p className="text-2xl font-bold text-indigo-400">
-                  {(stats.views / stats.subscribers).toFixed(2)}
+                  {(stats.views / stats.followers).toFixed(2)}
                 </p>
               </div>
             </div>

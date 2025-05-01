@@ -3,7 +3,6 @@ import { MongoClient } from 'mongodb';
 const generateRandomStats = (platform) => {
   return {
     followers: Math.floor(Math.random() * 1000000),
-    subscribers: Math.floor(Math.random() * 500000),
     views: Math.floor(Math.random() * 10000000),
     likes: Math.floor(Math.random() * 2000000),
     shares: Math.floor(Math.random() * 100000)

@@ -8,7 +8,7 @@ import DashboardCharts from "@/app/components/DashboardCharts";
 export default function Home() {
   const [totalStats, setTotalStats] = useState({
     followers: 0,
-    following: 0
+    views: 0
   });
 
   // Function to calculate totals from stats
@@ -17,9 +17,9 @@ export default function Home() {
       if (!platformStats) return acc;
       return {
         followers: acc.followers + (platformStats.followers || 0),
-        following: acc.following + (platformStats.subscribers || 0) // Using subscribers as "following" metric
+        views: acc.views + (platformStats.views || 0)
       };
-    }, { followers: 0, following: 0 });
+    }, { followers: 0, views: 0 });
   }, []);
 
   // Memoize the onStatsUpdate callback
@@ -89,8 +89,8 @@ export default function Home() {
                 <p className="text-2xl font-bold text-yellow-400">{totalStats.followers.toLocaleString()}</p>
               </div>
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-1">Following</h3>
-                <p className="text-2xl font-bold text-yellow-400">{totalStats.following.toLocaleString()}</p>
+                <h3 className="text-lg font-semibold mb-1">Total Views</h3>
+                <p className="text-2xl font-bold text-yellow-400">{totalStats.views.toLocaleString()}</p>
               </div>
             </div>
           </div>

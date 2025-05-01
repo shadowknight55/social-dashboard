@@ -250,13 +250,12 @@ export default function DashboardCharts({ onStatsUpdate }) {
     const data = stats[platform] || {};
     const values = [
       data.followers || 0,
-      data.subscribers || 0,
       data.views || 0,
       data.likes || 0,
       data.shares || 0
     ];
     
-    const labels = ['Followers', 'Subscribers', 'Views', 'Likes', 'Shares'];
+    const labels = ['Followers', 'Views', 'Likes', 'Shares'];
 
     return {
       labels,
