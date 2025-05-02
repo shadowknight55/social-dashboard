@@ -30,11 +30,13 @@ export default function PlatformAnalytics() {
   const platform = params.platform;
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState('30days');
+  const [exportData, setExportData] = useState(null);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`/api/social-stats?platforms=${platform}`);
+        const response = await fetch(`/api/social-stats?platforms=${platform}&range=${dateRange}`);
         const data = await response.json();
         setStats(data[platform]);
         setLoading(false);
@@ -45,7 +47,33 @@ export default function PlatformAnalytics() {
     };
 
     fetchStats();
-  }, [platform]);
+  }, [platform, dateRange]);
+
+  const handleExport = () => {
+    if (!stats) return;
+
+    const exportData = {
+      platform,
+      dateRange,
+      exportDate: new Date().toISOString(),
+      stats: {
+        followers: stats.followers || 0,
+        views: stats.views || 0,
+        likes: stats.likes || 0,
+        shares: stats.shares || 0
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${platform}_analytics_${dateRange}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const chartOptions = {
     responsive: true,
@@ -148,12 +176,34 @@ export default function PlatformAnalytics() {
           <h1 className="text-3xl font-bold">
             {platform.charAt(0).toUpperCase() + platform.slice(1)} Analytics
           </h1>
-          <button
-            onClick={() => window.location.href = '/'}
-            className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors"
-          >
-            Back to Dashboard
-          </button>
+          <div className="flex gap-4 items-center">
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="bg-black/30 text-white border border-purple-500 rounded-lg px-4 py-2"
+            >
+              <option value="1day">Last 24 Hours</option>
+              <option value="7days">Last 7 Days</option>
+              <option value="30days">Last 30 Days</option>
+              <option value="90days">Last 90 Days</option>
+              <option value="1year">Last Year</option>
+            </select>
+            <button
+              onClick={handleExport}
+              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Export Data
+            </button>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors"
+            >
+              Back to Dashboard
+            </button>
+          </div>
         </div>
 
         {/* Stats Overview */}
