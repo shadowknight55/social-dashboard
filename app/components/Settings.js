@@ -31,6 +31,10 @@ export default function Settings() {
   const [newPlatformName, setNewPlatformName] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [refreshRate, setRefreshRate] = useState('5');
+  const [profilePicture, setProfilePicture] = useState('/default-avatar.png');
+  const [theme, setTheme] = useState('dark');
+  const [notifications, setNotifications] = useState(false);
+  const [emailUpdates, setEmailUpdates] = useState(false);
   const [platformColors, setPlatformColors] = useState({
     youtube: {
       background: ['rgba(255, 0, 0, 0.7)', 'rgba(255, 99, 132, 0.7)', 'rgba(255, 159, 64, 0.7)'],
@@ -49,22 +53,69 @@ export default function Settings() {
       setActiveCharts(settings.activeCharts || ['youtube', 'twitch']);
       setPlatformColors(settings.platformColors || platformColors);
       setRefreshRate(settings.refreshRate || '5');
+      setTheme(settings.theme || 'dark');
+      setNotifications(settings.notifications || false);
+      setEmailUpdates(settings.emailUpdates || false);
+      setProfilePicture(settings.profilePicture || '/default-avatar.png');
     }
   }, []);
 
-  const showStatus = (message, isError = false) => {
-    setStatusMessage(message);
-    setTimeout(() => setStatusMessage(''), 3000);
+  const handleProfilePictureUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePicture(reader.result);
+        saveSettings(activeCharts, platformColors, refreshRate, {
+          theme,
+          notifications,
+          emailUpdates,
+          profilePicture: reader.result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const saveSettings = async (newActiveCharts, newPlatformColors, newRefreshRate) => {
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    saveSettings(activeCharts, platformColors, refreshRate, {
+      theme: newTheme,
+      notifications,
+      emailUpdates,
+      profilePicture
+    });
+  };
+
+  const handlePreferenceChange = (preference, value) => {
+    if (preference === 'notifications') {
+      setNotifications(value);
+    } else if (preference === 'emailUpdates') {
+      setEmailUpdates(value);
+    }
+    saveSettings(activeCharts, platformColors, refreshRate, {
+      theme,
+      notifications: preference === 'notifications' ? value : notifications,
+      emailUpdates: preference === 'emailUpdates' ? value : emailUpdates,
+      profilePicture
+    });
+  };
+
+  const saveSettings = async (newActiveCharts, newPlatformColors, newRefreshRate, profileSettings = null) => {
     const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
     settings.activeCharts = newActiveCharts;
     settings.platformColors = newPlatformColors;
     settings.refreshRate = newRefreshRate || refreshRate;
+    
+    if (profileSettings) {
+      settings.theme = profileSettings.theme;
+      settings.notifications = profileSettings.notifications;
+      settings.emailUpdates = profileSettings.emailUpdates;
+      settings.profilePicture = profileSettings.profilePicture;
+    }
+    
     localStorage.setItem('dashboardSettings', JSON.stringify(settings));
 
-    // Save to database
     try {
       const response = await fetch('/api/social-stats', {
         method: 'POST',
@@ -75,6 +126,7 @@ export default function Settings() {
           type: 'settings',
           activeCharts: newActiveCharts,
           refreshRate: newRefreshRate || refreshRate,
+          ...profileSettings,
           updatedAt: new Date().toISOString()
         }),
       });
@@ -86,6 +138,11 @@ export default function Settings() {
       console.error('Error saving settings:', error);
       showStatus('Failed to save settings to database', true);
     }
+  };
+
+  const showStatus = (message, isError = false) => {
+    setStatusMessage(message);
+    setTimeout(() => setStatusMessage(''), 3000);
   };
 
   const handleRefreshRateChange = async (value) => {
