@@ -90,10 +90,26 @@ export default function DashboardCharts({ onStatsUpdate }) {
 
   // Initialize Audio on client side
   useEffect(() => {
-    const audio = new Audio('/mp3/beepgt.mp3');
-    audio.volume = 0.5; // Set volume to 50%
-    audio.preload = 'auto'; // Preload the sound
-    setNotificationSound(audio);
+    try {
+      const audio = new Audio('/mp3/beepgt.mp3');
+      audio.volume = 0.5; // Set volume to 50%
+      audio.preload = 'auto'; // Preload the sound
+      
+      // Add event listeners to handle loading
+      audio.addEventListener('canplaythrough', () => {
+        console.log('Audio loaded successfully');
+        setNotificationSound(audio);
+      });
+      
+      audio.addEventListener('error', (e) => {
+        console.error('Error loading audio:', e);
+      });
+      
+      // Start loading the audio
+      audio.load();
+    } catch (error) {
+      console.error('Error initializing audio:', error);
+    }
   }, []);
 
   // Load settings and set up refresh rate monitoring
@@ -125,14 +141,16 @@ export default function DashboardCharts({ onStatsUpdate }) {
   }, []);
 
   // Handle notifications
-  const showRefreshNotification = useCallback((platform) => {
+  const showRefreshNotification = useCallback(async (platform) => {
     console.log('Showing notification for:', platform);
     // Play sound first
     if (notificationSound) {
-      notificationSound.currentTime = 0; // Reset sound to start
-      notificationSound.play().catch(error => {
+      try {
+        notificationSound.currentTime = 0; // Reset sound to start
+        await notificationSound.play();
+      } catch (error) {
         console.error('Error playing notification sound:', error);
-      });
+      }
     }
 
     // Show visual notification
@@ -163,7 +181,7 @@ export default function DashboardCharts({ onStatsUpdate }) {
         [platform]: new Date().toISOString()
       }));
       
-      showRefreshNotification(platform);
+      await showRefreshNotification(platform);
     } catch (error) {
       console.error(`Error refreshing ${platform} stats:`, error);
     }
@@ -171,16 +189,20 @@ export default function DashboardCharts({ onStatsUpdate }) {
 
   // Effect to handle stats updates
   useEffect(() => {
-    if (Object.keys(stats).length > 0) {
-      // Notify parent component of stats update
-      onStatsUpdate?.(stats);
+    const handleStatsUpdate = async () => {
+      if (Object.keys(stats).length > 0) {
+        // Notify parent component of stats update
+        onStatsUpdate?.(stats);
 
-      // Also dispatch event for any other listeners
-      const event = new CustomEvent('statsUpdated', {
-        detail: { stats }
-      });
-      window.dispatchEvent(event);
-    }
+        // Also dispatch event for any other listeners
+        const event = new CustomEvent('statsUpdated', {
+          detail: { stats }
+        });
+        window.dispatchEvent(event);
+      }
+    };
+
+    handleStatsUpdate();
   }, [stats, onStatsUpdate]);
 
   // Memoize the fetchInitialData function
@@ -207,9 +229,13 @@ export default function DashboardCharts({ onStatsUpdate }) {
 
   // Initial data fetch
   useEffect(() => {
-    if (activeCharts.length > 0) {
-      fetchInitialData();
-    }
+    const initializeData = async () => {
+      if (activeCharts.length > 0) {
+        await fetchInitialData();
+      }
+    };
+
+    initializeData();
   }, [fetchInitialData]);
 
   // Set up refresh interval for random chart selection
@@ -217,7 +243,7 @@ export default function DashboardCharts({ onStatsUpdate }) {
     console.log(`Setting up refresh interval with rate: ${refreshRate}ms`);
     let lastRefreshedPlatform = null;
     
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (activeCharts.length > 0) {
         // Randomly select one chart to refresh, but not the same one twice in a row
         let randomIndex;
@@ -229,7 +255,7 @@ export default function DashboardCharts({ onStatsUpdate }) {
         
         lastRefreshedPlatform = platformToRefresh;
         console.log(`Refreshing random platform: ${platformToRefresh}`);
-        refreshPlatform(platformToRefresh);
+        await refreshPlatform(platformToRefresh);
       }
     }, refreshRate);
 

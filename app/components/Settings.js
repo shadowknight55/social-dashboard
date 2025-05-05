@@ -57,7 +57,7 @@ export default function Settings() {
     setTimeout(() => setStatusMessage(''), 3000);
   };
 
-  const saveSettings = (newActiveCharts, newPlatformColors, newRefreshRate) => {
+  const saveSettings = async (newActiveCharts, newPlatformColors, newRefreshRate) => {
     const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
     settings.activeCharts = newActiveCharts;
     settings.platformColors = newPlatformColors;
@@ -65,25 +65,32 @@ export default function Settings() {
     localStorage.setItem('dashboardSettings', JSON.stringify(settings));
 
     // Save to database
-    fetch('/api/social-stats', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type: 'settings',
-        activeCharts: newActiveCharts,
-        refreshRate: newRefreshRate || refreshRate,
-        updatedAt: new Date().toISOString()
-      }),
-    }).catch(error => {
+    try {
+      const response = await fetch('/api/social-stats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'settings',
+          activeCharts: newActiveCharts,
+          refreshRate: newRefreshRate || refreshRate,
+          updatedAt: new Date().toISOString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
       console.error('Error saving settings:', error);
-    });
+      showStatus('Failed to save settings to database', true);
+    }
   };
 
-  const handleRefreshRateChange = (value) => {
+  const handleRefreshRateChange = async (value) => {
     setRefreshRate(value);
-    saveSettings(activeCharts, platformColors, value);
+    await saveSettings(activeCharts, platformColors, value);
     showStatus(`Refresh rate updated to ${value} minutes`);
   };
 
@@ -105,7 +112,7 @@ export default function Settings() {
       newColors[platform] = getRandomColors();
       setPlatformColors(newColors);
       
-      saveSettings(newActiveCharts, newColors, refreshRate);
+      await saveSettings(newActiveCharts, newColors, refreshRate);
       
       const response = await fetch('/api/social-stats', {
         method: 'POST',
@@ -138,7 +145,7 @@ export default function Settings() {
     try {
       const newActiveCharts = activeCharts.filter(p => p !== platform);
       setActiveCharts(newActiveCharts);
-      saveSettings(newActiveCharts, platformColors, refreshRate);
+      await saveSettings(newActiveCharts, platformColors, refreshRate);
 
       const response = await fetch('/api/social-stats', {
         method: 'POST',

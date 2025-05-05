@@ -49,30 +49,37 @@ export default function PlatformAnalytics() {
     fetchStats();
   }, [platform, dateRange]);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!stats) return;
 
-    const exportData = {
-      platform,
-      dateRange,
-      exportDate: new Date().toISOString(),
-      stats: {
-        followers: stats.followers || 0,
-        views: stats.views || 0,
-        likes: stats.likes || 0,
-        shares: stats.shares || 0
-      }
-    };
+    try {
+      const exportData = {
+        platform,
+        dateRange,
+        exportDate: new Date().toISOString(),
+        stats: {
+          followers: stats.followers || 0,
+          views: stats.views || 0,
+          likes: stats.likes || 0,
+          shares: stats.shares || 0
+        }
+      };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${platform}_analytics_${dateRange}_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${platform}_analytics_${dateRange}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      await new Promise(resolve => {
+        a.click();
+        resolve();
+      });
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+    }
   };
 
   const chartOptions = {
