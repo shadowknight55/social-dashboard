@@ -19,45 +19,61 @@ export const authOptions = {
                 username: { label: "Username", type: "text" }
             },
             async authorize(credentials) {
+                console.log('Starting authorization process...');
                 if (!credentials?.email || !credentials?.password) {
+                    console.log('Missing email or password');
                     throw new Error('Please enter an email and password');
                 }
 
-                const client = await clientPromise;
-                const db = client.db();
-                const user = await db.collection('users').findOne({ email: credentials.email });
+                try {
+                    console.log('Connecting to MongoDB...');
+                    const client = await clientPromise;
+                    const db = client.db();
+                    console.log('Connected to MongoDB successfully');
 
-                if (!user) {
-                    // Create new user if they don't exist
-                    if (credentials.username) {
-                        const hashedPassword = await bcrypt.hash(credentials.password, 10);
-                        const newUser = {
-                            email: credentials.email,
-                            password: hashedPassword,
-                            username: credentials.username,
-                            createdAt: new Date(),
-                        };
-                        await db.collection('users').insertOne(newUser);
-                        return {
-                            id: newUser._id.toString(),
-                            email: newUser.email,
-                            name: newUser.username,
-                        };
+                    console.log('Searching for user with email:', credentials.email);
+                    const user = await db.collection('users').findOne({ email: credentials.email });
+
+                    if (!user) {
+                        console.log('User not found, checking if we should create new user');
+                        if (credentials.username) {
+                            console.log('Creating new user with username:', credentials.username);
+                            const hashedPassword = await bcrypt.hash(credentials.password, 10);
+                            const newUser = {
+                                email: credentials.email,
+                                password: hashedPassword,
+                                username: credentials.username,
+                                createdAt: new Date(),
+                            };
+                            const result = await db.collection('users').insertOne(newUser);
+                            console.log('New user created with ID:', result.insertedId);
+                            return {
+                                id: result.insertedId.toString(),
+                                email: newUser.email,
+                                name: newUser.username,
+                            };
+                        }
+                        console.log('No user found and no username provided for new user');
+                        throw new Error('No user found with this email');
                     }
-                    throw new Error('No user found with this email');
-                }
 
-                // Verify password for existing user
-                const isValid = await bcrypt.compare(credentials.password, user.password);
-                if (!isValid) {
-                    throw new Error('Invalid password');
-                }
+                    console.log('User found, verifying password');
+                    const isValid = await bcrypt.compare(credentials.password, user.password);
+                    if (!isValid) {
+                        console.log('Invalid password');
+                        throw new Error('Invalid password');
+                    }
 
-                return {
-                    id: user._id.toString(),
-                    email: user.email,
-                    name: user.username,
-                };
+                    console.log('Password verified, returning user data');
+                    return {
+                        id: user._id.toString(),
+                        email: user.email,
+                        name: user.username,
+                    };
+                } catch (error) {
+                    console.error('Error in authorization:', error);
+                    throw error;
+                }
             }
         })
     ],
