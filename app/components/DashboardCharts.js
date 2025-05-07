@@ -144,20 +144,19 @@ export default function DashboardCharts({ onStatsUpdate }) {
   const showRefreshNotification = useCallback(async (platform) => {
     console.log('Showing notification for:', platform);
     // Play sound first
-    if (notificationSound) {
-      try {
-        notificationSound.currentTime = 0; // Reset sound to start
-        await notificationSound.play();
-      } catch (error) {
-        console.error('Error playing notification sound:', error);
-      }
+    try {
+      const audio = new Audio('/mp3/beepgt.mp3');
+      audio.volume = 0.5;
+      await audio.play();
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
     }
 
     // Show visual notification
     setRefreshedPlatform(platform);
     setShowNotification(true);
     setTimeout(() => setShowNotification(false), 3000);
-  }, [notificationSound]);
+  }, []);
 
   // Fetch data for a single platform
   const refreshPlatform = useCallback(async (platform) => {
@@ -319,9 +318,12 @@ export default function DashboardCharts({ onStatsUpdate }) {
           className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50 animate-notification"
           onClick={() => {
             // Play sound on click for testing
-            if (notificationSound) {
-              notificationSound.currentTime = 0;
-              notificationSound.play().catch(console.error);
+            try {
+              const audio = new Audio('/mp3/beepgt.mp3');
+              audio.volume = 0.5;
+              audio.play().catch(console.error);
+            } catch (error) {
+              console.error('Error playing notification sound:', error);
             }
           }}
         >
