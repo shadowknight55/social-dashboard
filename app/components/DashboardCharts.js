@@ -103,31 +103,6 @@ export default function DashboardCharts({ onStatsUpdate }) {
       
       audio.addEventListener('error', (e) => {
         console.error('Error loading audio:', e);
-        // Create a simple beep sound as fallback
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-        
-        const fallbackSound = {
-          play: async () => {
-            try {
-              oscillator.start();
-              await new Promise(resolve => setTimeout(resolve, 200));
-              oscillator.stop();
-            } catch (error) {
-              console.error('Error playing fallback sound:', error);
-            }
-          }
-        };
-        
-        setNotificationSound(fallbackSound);
       });
       
       // Start loading the audio
