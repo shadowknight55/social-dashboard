@@ -5,8 +5,12 @@ In the fragmented world of social media, managing multiple platforms with discon
 **Industry:** Technology  
 **Developer:** Kareem  
 **Completion Date:** 4/12/2025  
+<<<<<<< HEAD
 **Trello Board:** [Social Dashboard Trello](https://trello.com/b/tctMaHzw/social-dashboard)
 **Wire Frame:** [Social Dashboard Wire Frame](https://excalidraw.com/#json=ND8s8TnBIZMgO67SBsTg2,Ne4tEKNKOsOnYskhW9vK0A)
+=======
+**Trello Board:** [Social Dashboard Trello](https://trello.com/b/tctMaHzw/social-dashboard)  
+>>>>>>> a0f6d89dcfdd78df8fe50f10038706829ad24a10
 **Live Demo:** *[Coming Soon]*
 
 ---
