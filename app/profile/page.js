@@ -98,9 +98,31 @@ export default function ProfilePage() {
       setPasswordError('Passwords do not match.');
       return;
     }
-    // TODO: Integrate with backend/auth system for password change
-    setStatus('Password change feature coming soon!');
-    setPasswords({ current: '', new: '', confirm: '' });
+
+    try {
+      const response = await fetch('/api/auth/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwords.current,
+          newPassword: passwords.new
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setPasswordError(data.error || 'Failed to update password');
+        return;
+      }
+
+      setStatus('Password updated successfully!');
+      setPasswords({ current: '', new: '', confirm: '' });
+    } catch (error) {
+      console.error('Error updating password:', error);
+      setPasswordError('An error occurred while updating password');
+    }
+    
     setTimeout(() => setStatus(''), 2000);
   };
 

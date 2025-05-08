@@ -35,13 +35,23 @@ export default function PlatformAnalytics() {
 
   useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true);
       try {
-        const response = await fetch(`/api/social-stats?platforms=${platform}&range=${dateRange}`);
+        const response = await fetch(`/api/analytics?platform=${platform}&range=${dateRange}`);
         const data = await response.json();
-        setStats(data[platform]);
+        
+        if (data.error) {
+          console.error('API Error:', data.error);
+          setStats(null);
+          setLoading(false);
+          return;
+        }
+
+        setStats(data.data);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching stats:', error);
+        setStats(null);
         setLoading(false);
       }
     };
@@ -57,12 +67,10 @@ export default function PlatformAnalytics() {
         platform,
         dateRange,
         exportDate: new Date().toISOString(),
-        stats: {
-          followers: stats.followers || 0,
-          views: stats.views || 0,
-          likes: stats.likes || 0,
-          shares: stats.shares || 0
-        }
+        data: stats.map(entry => ({
+          date: entry.date,
+          ...entry.stats
+        }))
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -123,33 +131,61 @@ export default function PlatformAnalytics() {
   };
 
   const getChartData = (stats) => {
+    console.log('Getting chart data for stats:', stats);
+    if (!stats || !Array.isArray(stats)) {
+      console.log('Invalid stats data:', stats);
+      return null;
+    }
+
+    const dates = stats.map(entry => new Date(entry.date).toLocaleDateString());
+    console.log('Dates:', dates);
+    
     const metrics = {
-      followers: stats.followers || 0,
-      views: stats.views || 0,
-      likes: stats.likes || 0,
-      shares: stats.shares || 0
+      followers: stats.map(entry => entry.stats.followers),
+      views: stats.map(entry => entry.stats.views),
+      likes: stats.map(entry => entry.stats.likes),
+      shares: stats.map(entry => entry.stats.shares)
     };
+    console.log('Metrics:', metrics);
 
     return {
-      labels: ['Followers', 'Views', 'Likes', 'Shares'],
-      datasets: [{
-        label: 'Platform Metrics',
-        data: Object.values(metrics),
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.5)',
-          'rgba(54, 162, 235, 0.5)',
-          'rgba(255, 206, 86, 0.5)',
-          'rgba(75, 192, 192, 0.5)'
-        ],
-        borderColor: [
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)'
-        ],
-        borderWidth: 1
-      }]
+      labels: dates,
+      datasets: [
+        {
+          label: 'Followers',
+          data: metrics.followers,
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.5)',
+          tension: 0.4
+        },
+        {
+          label: 'Views',
+          data: metrics.views,
+          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(54, 162, 235, 0.5)',
+          tension: 0.4
+        },
+        {
+          label: 'Likes',
+          data: metrics.likes,
+          borderColor: 'rgba(255, 206, 86, 1)',
+          backgroundColor: 'rgba(255, 206, 86, 0.5)',
+          tension: 0.4
+        },
+        {
+          label: 'Shares',
+          data: metrics.shares,
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+          tension: 0.4
+        }
+      ]
     };
+  };
+
+  const getLatestStats = () => {
+    if (!stats || !Array.isArray(stats) || stats.length === 0) return null;
+    return stats[stats.length - 1].stats;
   };
 
   if (loading) {
@@ -172,8 +208,8 @@ export default function PlatformAnalytics() {
     );
   }
 
-  // Create data for the overview chart
-  const overviewData = getChartData(stats);
+  const latestStats = getLatestStats();
+  const chartData = getChartData(stats);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black text-white p-8">
@@ -183,7 +219,7 @@ export default function PlatformAnalytics() {
           <h1 className="text-3xl font-bold">
             {platform.charAt(0).toUpperCase() + platform.slice(1)} Analytics
           </h1>
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4">
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
@@ -217,16 +253,16 @@ export default function PlatformAnalytics() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
             <h3 className="text-lg font-semibold mb-2">Total Followers</h3>
-            <p className="text-3xl font-bold text-purple-400">{stats.followers.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-purple-400">{latestStats?.followers.toLocaleString()}</p>
           </div>
           <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
             <h3 className="text-lg font-semibold mb-2">Total Views</h3>
-            <p className="text-3xl font-bold text-blue-400">{stats.views.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-blue-400">{latestStats?.views.toLocaleString()}</p>
           </div>
           <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
             <h3 className="text-lg font-semibold mb-2">Engagement Rate</h3>
             <p className="text-3xl font-bold text-green-400">
-              {((stats.likes + stats.shares) / stats.views * 100).toFixed(2)}%
+              {((latestStats?.likes + latestStats?.shares) / latestStats?.views * 100).toFixed(2)}%
             </p>
           </div>
         </div>
@@ -234,50 +270,7 @@ export default function PlatformAnalytics() {
         {/* Main Chart */}
         <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm mb-8">
           <div className="h-[400px]">
-            <Line options={chartOptions} data={overviewData} />
-          </div>
-        </div>
-
-        {/* Detailed Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
-            <h3 className="text-xl font-semibold mb-4">Audience Metrics</h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400">Followers</p>
-                <p className="text-2xl font-bold text-purple-400">{stats.followers.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Views</p>
-                <p className="text-2xl font-bold text-blue-400">{stats.views.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Engagement Rate</p>
-                <p className="text-2xl font-bold text-green-400">
-                  {((stats.likes + stats.shares) / stats.followers * 100).toFixed(2)}%
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
-            <h3 className="text-xl font-semibold mb-4">Engagement Metrics</h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400">Likes</p>
-                <p className="text-2xl font-bold text-pink-400">{stats.likes.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Shares</p>
-                <p className="text-2xl font-bold text-yellow-400">{stats.shares.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Views per Follower</p>
-                <p className="text-2xl font-bold text-indigo-400">
-                  {(stats.views / stats.followers).toFixed(2)}
-                </p>
-              </div>
-            </div>
+            <Line options={chartOptions} data={chartData} />
           </div>
         </div>
       </div>

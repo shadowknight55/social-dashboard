@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 const generateRandomStats = (platform) => {
   return {
@@ -27,6 +28,7 @@ const getRandomColors = () => {
 };
 
 export default function Settings() {
+  const { data: session } = useSession();
   const [activeCharts, setActiveCharts] = useState(['youtube', 'twitch']);
   const [newPlatformName, setNewPlatformName] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -47,18 +49,31 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem('dashboardSettings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setActiveCharts(settings.activeCharts || ['youtube', 'twitch']);
-      setPlatformColors(settings.platformColors || platformColors);
-      setRefreshRate(settings.refreshRate || '5');
-      setTheme(settings.theme || 'dark');
-      setNotifications(settings.notifications || false);
-      setEmailUpdates(settings.emailUpdates || false);
-      setProfilePicture(settings.profilePicture || '/default-avatar.png');
-    }
-  }, []);
+    const fetchSettings = async () => {
+      if (!session?.user?.id) return;
+      
+      try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        const userSettings = data.find(s => s.userId === session.user.id);
+        
+        if (userSettings) {
+          setActiveCharts(userSettings.activeCharts || ['youtube', 'twitch']);
+          setPlatformColors(userSettings.platformColors || platformColors);
+          setRefreshRate(userSettings.refreshRate || '5');
+          setTheme(userSettings.theme || 'dark');
+          setNotifications(userSettings.notifications || false);
+          setEmailUpdates(userSettings.emailUpdates || false);
+          setProfilePicture(userSettings.profilePicture || '/default-avatar.png');
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        showStatus('Failed to load settings', true);
+      }
+    };
+
+    fetchSettings();
+  }, [session]);
 
   const handleProfilePictureUpload = (event) => {
     const file = event.target.files[0];
@@ -102,10 +117,18 @@ export default function Settings() {
   };
 
   const saveSettings = async (newActiveCharts, newPlatformColors, newRefreshRate, profileSettings = null) => {
-    const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
-    settings.activeCharts = newActiveCharts;
-    settings.platformColors = newPlatformColors;
-    settings.refreshRate = newRefreshRate || refreshRate;
+    if (!session?.user?.id) {
+      showStatus('You must be logged in to save settings', true);
+      return;
+    }
+
+    const settings = {
+      userId: session.user.id,
+      activeCharts: newActiveCharts,
+      platformColors: newPlatformColors,
+      refreshRate: newRefreshRate || refreshRate,
+      updatedAt: new Date().toISOString()
+    };
     
     if (profileSettings) {
       settings.theme = profileSettings.theme;
@@ -113,27 +136,21 @@ export default function Settings() {
       settings.emailUpdates = profileSettings.emailUpdates;
       settings.profilePicture = profileSettings.profilePicture;
     }
-    
-    localStorage.setItem('dashboardSettings', JSON.stringify(settings));
 
     try {
-      const response = await fetch('/api/social-stats', {
+      const response = await fetch('/api/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          type: 'settings',
-          activeCharts: newActiveCharts,
-          refreshRate: newRefreshRate || refreshRate,
-          ...profileSettings,
-          updatedAt: new Date().toISOString()
-        }),
+        body: JSON.stringify(settings),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save settings');
       }
+      
+      showStatus('Settings saved successfully');
     } catch (error) {
       console.error('Error saving settings:', error);
       showStatus('Failed to save settings to database', true);
@@ -169,21 +186,23 @@ export default function Settings() {
       newColors[platform] = getRandomColors();
       setPlatformColors(newColors);
       
+      // Save to settings collection
       await saveSettings(newActiveCharts, newColors, refreshRate);
       
-      const response = await fetch('/api/social-stats', {
+      // Generate and save initial stats for the new platform
+      const initialStats = generateRandomStats(platform);
+      const statsResponse = await fetch('/api/social-stats', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          type: 'settings',
-          activeCharts: newActiveCharts,
-          updatedAt: new Date().toISOString()
+          platform: platform,
+          stats: initialStats
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to update database');
+      if (!statsResponse.ok) throw new Error('Failed to create platform stats');
       
       showStatus(`Added ${platform} successfully!`);
       setNewPlatformName('');
@@ -202,21 +221,16 @@ export default function Settings() {
     try {
       const newActiveCharts = activeCharts.filter(p => p !== platform);
       setActiveCharts(newActiveCharts);
+      
+      // Update settings collection
       await saveSettings(newActiveCharts, platformColors, refreshRate);
 
-      const response = await fetch('/api/social-stats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'settings',
-          activeCharts: newActiveCharts,
-          updatedAt: new Date().toISOString()
-        }),
+      // Remove platform data from social_stats collection
+      const response = await fetch(`/api/social-stats/${platform}`, {
+        method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to update database');
+      if (!response.ok) throw new Error('Failed to remove platform data');
       
       showStatus(`Removed ${platform} successfully!`);
     } catch (error) {

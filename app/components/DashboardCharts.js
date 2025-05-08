@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Pie, Bar, Line, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement } from 'chart.js';
+import { useSession } from 'next-auth/react';
 
 // Register all chart components
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement);
@@ -78,7 +79,8 @@ const getRandomColors = () => {
 };
 
 export default function DashboardCharts({ onStatsUpdate }) {
-  const [activeCharts, setActiveCharts] = useState(['youtube', 'twitch']);
+  const { data: session } = useSession();
+  const [activeCharts, setActiveCharts] = useState([]);
   const [chartTypes, setChartTypes] = useState({});
   const [stats, setStats] = useState({});
   const [platformColors, setPlatformColors] = useState({});
@@ -112,33 +114,29 @@ export default function DashboardCharts({ onStatsUpdate }) {
     }
   }, []);
 
-  // Load settings and set up refresh rate monitoring
+  // Load settings from the settings API
   useEffect(() => {
-    const loadSettings = () => {
-      const savedSettings = localStorage.getItem('dashboardSettings');
-      if (savedSettings) {
-        const parsedSettings = JSON.parse(savedSettings);
-        setChartTypes(parsedSettings.chartTypes || {});
-        setActiveCharts(parsedSettings.activeCharts || ['youtube', 'twitch']);
-        setPlatformColors(parsedSettings.platformColors || {});
-        setRefreshRate((parsedSettings.refreshRate || 5) * 60 * 1000);
-      }
-    };
-
-    loadSettings();
-
-    const handleStorageChange = (e) => {
-      if (e.key === 'dashboardSettings') {
-        const newSettings = JSON.parse(e.newValue);
-        if (newSettings.refreshRate) {
-          setRefreshRate(newSettings.refreshRate * 60 * 1000);
+    const fetchSettings = async () => {
+      if (!session?.user?.id) return;
+      
+      try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        const userSettings = data.find(s => s.userId === session.user.id);
+        
+        if (userSettings) {
+          setActiveCharts(userSettings.activeCharts || ['youtube', 'twitch']);
+          setPlatformColors(userSettings.platformColors || platformColors);
+          setChartTypes(userSettings.chartTypes || {});
+          setRefreshRate((userSettings.refreshRate || 5) * 60 * 1000);
         }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    fetchSettings();
+  }, [session]);
 
   // Handle notifications
   const showRefreshNotification = useCallback(async (platform) => {
@@ -162,18 +160,22 @@ export default function DashboardCharts({ onStatsUpdate }) {
   const refreshPlatform = useCallback(async (platform) => {
     console.log('Refreshing platform:', platform);
     try {
-      const response = await fetch(`/api/social-stats?platforms=${platform}&refresh=true`);
+      const response = await fetch(`/api/social-stats?platforms=${platform}&range=1day&refresh=true`);
       if (!response.ok) throw new Error('Failed to fetch stats');
       const data = await response.json();
       
-      // Only update the stats for the specific platform
-      setStats(prevStats => {
-        const newStats = {
-          ...prevStats,
-          [platform]: data[platform]
-        };
-        return newStats;
-      });
+      if (data[platform] && data[platform].length > 0) {
+        // Get the most recent entry
+        const latestEntry = data[platform][data[platform].length - 1];
+        
+        setStats(prevStats => {
+          const newStats = {
+            ...prevStats,
+            [platform]: latestEntry.stats
+          };
+          return newStats;
+        });
+      }
       
       setLastRefreshed(prev => ({
         ...prev,
@@ -207,13 +209,25 @@ export default function DashboardCharts({ onStatsUpdate }) {
   // Memoize the fetchInitialData function
   const fetchInitialData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/social-stats?platforms=${activeCharts.join(',')}`);
+      // Fetch the most recent stats for each platform
+      const response = await fetch(`/api/social-stats?platforms=${activeCharts.join(',')}&range=1day`);
       if (!response.ok) throw new Error('Failed to fetch stats');
       const data = await response.json();
-      setStats(data);
+      
+      // Transform the data to get the most recent stats for each platform
+      const latestStats = {};
+      Object.keys(data).forEach(platform => {
+        if (data[platform] && data[platform].length > 0) {
+          // Get the most recent entry
+          const latestEntry = data[platform][data[platform].length - 1];
+          latestStats[platform] = latestEntry.stats;
+        }
+      });
+      
+      setStats(latestStats);
       
       // Notify parent of initial stats
-      onStatsUpdate?.(data);
+      onStatsUpdate?.(latestStats);
       
       const now = new Date().toISOString();
       const initialRefreshTimes = {};
@@ -261,15 +275,36 @@ export default function DashboardCharts({ onStatsUpdate }) {
     return () => clearInterval(interval);
   }, [activeCharts, refreshRate, refreshPlatform]);
 
-  const saveChartType = useCallback((platform, type) => {
+  const saveChartType = useCallback(async (platform, type) => {
+    if (!session?.user?.id) return;
+
     setChartTypes(prev => {
       const newChartTypes = { ...prev, [platform]: type };
-      const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
-      const newSettings = { ...settings, chartTypes: newChartTypes };
-      localStorage.setItem('dashboardSettings', JSON.stringify(newSettings));
       return newChartTypes;
     });
-  }, []);
+
+    try {
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+      const userSettings = data.find(s => s.userId === session.user.id) || {};
+
+      const updatedSettings = {
+        ...userSettings,
+        userId: session.user.id,
+        chartTypes: { ...userSettings.chartTypes, [platform]: type }
+      };
+
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedSettings),
+      });
+    } catch (error) {
+      console.error('Error saving chart type:', error);
+    }
+  }, [session]);
 
   const getChartData = (platform) => {
     const data = stats[platform] || {};
@@ -337,7 +372,7 @@ export default function DashboardCharts({ onStatsUpdate }) {
           </div>
         </div>
       )}
-      {activeCharts.map((platform) => (
+      {activeCharts.map(platform => (
         <div key={platform} className="bg-black/30 rounded-xl p-6 backdrop-blur-sm">
           <div className="flex justify-between items-center mb-4">
             <h2 
