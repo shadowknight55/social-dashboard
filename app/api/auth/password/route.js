@@ -4,6 +4,8 @@ import { authOptions } from '../[...nextauth]/route';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   let client;
   try {
