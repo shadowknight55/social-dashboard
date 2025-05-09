@@ -1,11 +1,12 @@
-'use client';  // Marks this as a Client Component in Next.js
+"use client";  // Marks this as a Client Component in Next.js
 
 import { signIn, useSession } from 'next-auth/react';  // NextAuth function for authentication
 import { useState, useEffect } from 'react';  // React hook for state management
 import { useRouter, useSearchParams } from 'next/navigation';  // Next.js routing hooks
 import { useTheme } from '../context/ThemeContext';
+import { Suspense } from 'react';
 
-export default function SignIn() {
+function SignInForm() {
     const router = useRouter();  // Hook for programmatic navigation
     const searchParams = useSearchParams();  // Hook to access URL parameters
     const { data: session, status } = useSession();
@@ -27,6 +28,13 @@ export default function SignIn() {
             router.push(callbackUrl);
         }
     }, [status, callbackUrl, router]);
+
+    useEffect(() => {
+        const error = searchParams.get('error');
+        if (error) {
+            setError(error === 'CredentialsSignin' ? 'Invalid email or password' : 'An error occurred');
+        }
+    }, [searchParams]);
 
     const handleGoogleSignIn = async () => {
         setIsLoading(true);  // Start loading state
@@ -260,5 +268,13 @@ export default function SignIn() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SignInPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <SignInForm />
+        </Suspense>
     );
 }
