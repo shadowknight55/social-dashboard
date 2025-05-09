@@ -1,9 +1,11 @@
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
 
-export async function GET(req) {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request) {
   let client;
   try {
     const session = await getServerSession(authOptions);
@@ -32,7 +34,7 @@ export async function GET(req) {
   }
 }
 
-export async function POST(req) {
+export async function POST(request) {
   let client;
   try {
     const session = await getServerSession(authOptions);
@@ -40,7 +42,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await request.json();
     const { profilePicture, notifications, emailUpdates } = body;
 
     client = await connectToDatabase();
