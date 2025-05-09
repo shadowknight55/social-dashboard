@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../[...nextauth]/route';
+import { GET as authHandler } from '../[...nextauth]/route';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
 
@@ -11,7 +11,7 @@ export const preferredRegion = 'auto';
 async function POST(request) {
   let client;
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authHandler);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
