@@ -1,22 +1,32 @@
 import { MongoClient } from 'mongodb';
 
 export async function DELETE(request, { params }) {
+  let client;
   try {
     const { platform } = params;
-    const client = await MongoClient.connect('mongodb://localhost:27017');
+    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+    client = await MongoClient.connect(uri);
     const db = client.db('social_dashboard');
-    const collection = db.collection('social_stats');
-
-    // Remove platform stats
-    await collection.deleteMany({ 
-      type: 'platform_stats',
+    
+    // Remove from social_stats collection
+    const socialStatsCollection = db.collection('social_stats');
+    await socialStatsCollection.deleteMany({ 
       platform: platform 
     });
 
-    client.close();
+    // Remove from analytics_stats collection
+    const analyticsStatsCollection = db.collection('analytics_stats');
+    await analyticsStatsCollection.deleteMany({ 
+      platform: platform 
+    });
+
     return Response.json({ success: true });
   } catch (error) {
     console.error('Error deleting platform stats:', error);
     return Response.json({ error: 'Failed to delete platform stats' }, { status: 500 });
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 } 
