@@ -5,6 +5,10 @@ import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const preferredRegion = 'auto';
+
 export const authOptions = {
     providers: [
         GoogleProvider({
