@@ -211,7 +211,7 @@ export default function DashboardCharts({ onStatsUpdate }) {
     };
 
     handleStatsUpdate();
-  }, [stats, onStatsUpdate]);
+  }, [stats, onStatsUpdate, activeCharts.length]);
 
   // Memoize the fetchInitialData function
   const fetchInitialData = useCallback(async () => {
