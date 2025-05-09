@@ -48,6 +48,14 @@ export default function Settings() {
     }
   });
 
+  const refreshRateOptions = [
+    { value: 5, label: '5 Minutes' },
+    { value: 10, label: '10 Minutes' },
+    { value: 15, label: '15 Minutes' },
+    { value: 30, label: '30 Minutes' },
+    { value: 60, label: '1 Hour' }
+  ];
+
   useEffect(() => {
     const fetchSettings = async () => {
       if (!session?.user?.id) return;
@@ -117,18 +125,10 @@ export default function Settings() {
   };
 
   const saveSettings = async (newActiveCharts, newPlatformColors, newRefreshRate, profileSettings = null) => {
-    if (!session?.user?.id) {
-      showStatus('You must be logged in to save settings', true);
-      return;
-    }
-
-    const settings = {
-      userId: session.user.id,
-      activeCharts: newActiveCharts,
-      platformColors: newPlatformColors,
-      refreshRate: newRefreshRate || refreshRate,
-      updatedAt: new Date().toISOString()
-    };
+    const settings = JSON.parse(localStorage.getItem('dashboardSettings') || '{}');
+    settings.activeCharts = newActiveCharts;
+    settings.platformColors = newPlatformColors;
+    settings.refreshRate = newRefreshRate || refreshRate;
     
     if (profileSettings) {
       settings.theme = profileSettings.theme;
@@ -136,6 +136,8 @@ export default function Settings() {
       settings.emailUpdates = profileSettings.emailUpdates;
       settings.profilePicture = profileSettings.profilePicture;
     }
+    
+    localStorage.setItem('dashboardSettings', JSON.stringify(settings));
 
     try {
       const response = await fetch('/api/settings', {
@@ -143,17 +145,20 @@ export default function Settings() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({
+          userId: session.user.id,
+          activeCharts: newActiveCharts,
+          platformColors: newPlatformColors,
+          refreshRate: newRefreshRate || refreshRate,
+          ...profileSettings
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save settings');
-      }
-      
-      showStatus('Settings saved successfully');
+      if (!response.ok) throw new Error('Failed to save settings');
+      showStatus('Settings saved successfully!');
     } catch (error) {
       console.error('Error saving settings:', error);
-      showStatus('Failed to save settings to database', true);
+      showStatus('Failed to save settings', true);
     }
   };
 
@@ -306,7 +311,7 @@ export default function Settings() {
       {/* Chart Settings */}
       <div className="bg-black/30 rounded-xl p-8 backdrop-blur-sm">
         <h2 className="text-2xl font-bold mb-6">Chart Settings</h2>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div>
             <h3 className="text-lg font-semibold mb-2">Data Refresh Rate</h3>
             <select 
@@ -314,13 +319,14 @@ export default function Settings() {
               value={refreshRate}
               onChange={(e) => handleRefreshRateChange(e.target.value)}
             >
-              <option value="5">Every 5 minutes</option>
-              <option value="15">Every 15 minutes</option>
-              <option value="30">Every 30 minutes</option>
-              <option value="60">Every hour</option>
+              {refreshRateOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <p className="text-sm text-gray-400 mt-2">
-              Charts will refresh with new random data after the selected interval
+              Charts will refresh with new data after the selected interval
             </p>
           </div>
 

@@ -86,35 +86,36 @@ export default function DashboardCharts({ onStatsUpdate }) {
   const [platformColors, setPlatformColors] = useState({});
   const [lastRefreshed, setLastRefreshed] = useState({});
   const [showNotification, setShowNotification] = useState(false);
-  const [refreshedPlatform, setRefreshedPlatform] = useState('');
-  const [notificationSound, setNotificationSound] = useState(null);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationSound] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const audio = new Audio('/mp3/beepgt.mp3');
+      audio.volume = 0.5;
+      return audio;
+    }
+    return null;
+  });
+  const [canPlaySound, setCanPlaySound] = useState(false);
   const [refreshRate, setRefreshRate] = useState(5 * 60 * 1000); // Default 5 minutes
 
-  // Initialize Audio on client side
+  // Handle user interaction to enable sound
   useEffect(() => {
-    try {
-      const audio = new Audio('/mp3/beepgt.mp3');
-      audio.volume = 0.5; // Set volume to 50%
-      audio.preload = 'auto'; // Preload the sound
-      
-      // Add event listeners to handle loading
-      audio.addEventListener('canplaythrough', () => {
-        console.log('Audio loaded successfully');
-        setNotificationSound(audio);
-      });
-      
-      audio.addEventListener('error', (e) => {
-        console.error('Error loading audio:', e);
-      });
-      
-      // Start loading the audio
-      audio.load();
-    } catch (error) {
-      console.error('Error initializing audio:', error);
-    }
+    const handleInteraction = () => {
+      setCanPlaySound(true);
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('keydown', handleInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
   }, []);
 
-  // Load settings from the settings API
+  // Load settings from API
   useEffect(() => {
     const fetchSettings = async () => {
       if (!session?.user?.id) return;
@@ -126,7 +127,7 @@ export default function DashboardCharts({ onStatsUpdate }) {
         
         if (userSettings) {
           setActiveCharts(userSettings.activeCharts || ['youtube', 'twitch']);
-          setPlatformColors(userSettings.platformColors || platformColors);
+          setPlatformColors(userSettings.platformColors || {});
           setChartTypes(userSettings.chartTypes || {});
           setRefreshRate((userSettings.refreshRate || 5) * 60 * 1000);
         }
@@ -138,23 +139,29 @@ export default function DashboardCharts({ onStatsUpdate }) {
     fetchSettings();
   }, [session]);
 
-  // Handle notifications
-  const showRefreshNotification = useCallback(async (platform) => {
-    console.log('Showing notification for:', platform);
-    // Play sound first
-    try {
-      const audio = new Audio('/mp3/beepgt.mp3');
-      audio.volume = 0.5;
-      await audio.play();
-    } catch (error) {
-      console.error('Error playing notification sound:', error);
+  // Show reminder notification
+  const showReminder = useCallback(async () => {
+    // Only play sound if we have permission and the sound is loaded
+    if (canPlaySound && notificationSound) {
+      try {
+        await notificationSound.play();
+      } catch (error) {
+        console.error('Error playing notification sound:', error);
+      }
     }
 
     // Show visual notification
-    setRefreshedPlatform(platform);
+    setNotificationMessage("Time to check your social media stats!");
     setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
-  }, []);
+    setTimeout(() => setShowNotification(false), 5000);
+  }, [canPlaySound, notificationSound]);
+
+  // Set up reminder interval
+  useEffect(() => {
+    console.log(`Setting up reminder interval: ${refreshRate}ms`);
+    const interval = setInterval(showReminder, refreshRate);
+    return () => clearInterval(interval);
+  }, [refreshRate, showReminder]);
 
   // Fetch data for a single platform
   const refreshPlatform = useCallback(async (platform) => {
@@ -182,11 +189,11 @@ export default function DashboardCharts({ onStatsUpdate }) {
         [platform]: new Date().toISOString()
       }));
       
-      await showRefreshNotification(platform);
+      await showReminder();
     } catch (error) {
       console.error(`Error refreshing ${platform} stats:`, error);
     }
-  }, [showRefreshNotification]);
+  }, [showReminder]);
 
   // Effect to handle stats updates
   useEffect(() => {
@@ -350,25 +357,14 @@ export default function DashboardCharts({ onStatsUpdate }) {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-4 relative">
       {showNotification && (
         <div 
-          className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50 animate-notification"
-          onClick={() => {
-            // Play sound on click for testing
-            try {
-              const audio = new Audio('/mp3/beepgt.mp3');
-              audio.volume = 0.5;
-              audio.play().catch(console.error);
-            } catch (error) {
-              console.error('Error playing notification sound:', error);
-            }
-          }}
+          className="fixed top-4 right-4 bg-purple-600 text-white p-4 rounded-lg shadow-lg z-50 animate-notification cursor-pointer"
+          onClick={() => setShowNotification(false)}
         >
           <div className="flex items-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            <span>
-              {refreshedPlatform.charAt(0).toUpperCase() + refreshedPlatform.slice(1)} stats refreshed!
-            </span>
+            <span>{notificationMessage}</span>
           </div>
         </div>
       )}
