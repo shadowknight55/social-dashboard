@@ -1,4 +1,5 @@
-import { MongoClient } from 'mongodb';
+import { connectToDatabase } from '@/app/lib/mongodb';
+import { NextResponse } from 'next/server';
 
 const generateTrendingStats = (platform, date, baseStats) => {
   // Calculate days from start to determine growth
@@ -56,8 +57,7 @@ const getDateRange = (range) => {
 export async function GET(request) {
   let client;
   try {
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-    client = await MongoClient.connect(uri);
+    client = await connectToDatabase();
     const db = client.db('social_dashboard');
     const collection = db.collection('analytics_stats');
 
@@ -68,7 +68,7 @@ export async function GET(request) {
     const shouldRefresh = searchParams.get('refresh') === 'true';
 
     if (!platform) {
-      return Response.json({ error: 'Platform parameter is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Platform parameter is required' }, { status: 400 });
     }
 
     const { start, end } = getDateRange(range);
@@ -118,21 +118,21 @@ export async function GET(request) {
         date: { $gte: start, $lte: end }
       }).sort({ date: 1 }).toArray();
 
-      return Response.json({
+      return NextResponse.json({
         platform,
         range,
         data: updatedData
       });
     }
 
-    return Response.json({
+    return NextResponse.json({
       platform,
       range,
       data: analyticsData
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);
-    return Response.json({ error: 'Failed to fetch analytics data', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch analytics data', details: error.message }, { status: 500 });
   } finally {
     if (client) {
       await client.close();

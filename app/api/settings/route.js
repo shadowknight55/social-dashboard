@@ -1,26 +1,32 @@
-import { MongoClient } from 'mongodb';
+import { connectToDatabase } from '@/app/lib/mongodb';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
+  let client;
   try {
-    const client = await MongoClient.connect(process.env.MONGODB_URI);
+    client = await connectToDatabase();
     const db = client.db('social_dashboard');
     const collection = db.collection('settings');
 
     // Get all settings from the database
     const settings = await collection.find({}).toArray();
     
-    client.close();
-    return Response.json(settings);
+    return NextResponse.json(settings);
   } catch (error) {
     console.error('Error fetching settings:', error);
-    return Response.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }
 
 export async function POST(request) {
+  let client;
   try {
     const data = await request.json();
-    const client = await MongoClient.connect(process.env.MONGODB_URI);
+    client = await connectToDatabase();
     const db = client.db('social_dashboard');
     const collection = db.collection('settings');
 
@@ -31,10 +37,13 @@ export async function POST(request) {
       { upsert: true }
     );
 
-    client.close();
-    return Response.json({ success: true });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating settings:', error);
-    return Response.json({ error: 'Failed to update settings' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 } 

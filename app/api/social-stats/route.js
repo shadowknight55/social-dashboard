@@ -1,4 +1,5 @@
-import { MongoClient } from 'mongodb';
+import { connectToDatabase } from '@/app/lib/mongodb';
+import { NextResponse } from 'next/server';
 
 const generateRandomStats = (platform, date) => {
   // Base stats that will be modified based on the date
@@ -49,10 +50,7 @@ const getDateRange = (range) => {
 export async function GET(request) {
   let client;
   try {
-    // Use environment variable for MongoDB connection
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-    console.log('Connecting to MongoDB...');
-    client = await MongoClient.connect(uri);
+    client = await connectToDatabase();
     const db = client.db('social_dashboard');
     const collection = db.collection('social_stats');
 
@@ -62,8 +60,6 @@ export async function GET(request) {
     const shouldRefresh = searchParams.get('refresh') === 'true';
     const range = searchParams.get('range') || '30days';
 
-    console.log('Request params:', { requestedPlatforms, shouldRefresh, range });
-
     const { start, end } = getDateRange(range);
 
     // Get existing stats from database
@@ -72,8 +68,6 @@ export async function GET(request) {
       platform: { $in: requestedPlatforms },
       date: { $gte: start, $lte: end }
     }).toArray();
-
-    console.log('Found existing stats:', existingStats.length);
 
     // Group stats by platform
     const statsMap = existingStats.reduce((acc, stat) => {
@@ -128,11 +122,10 @@ export async function GET(request) {
       await collection.bulkWrite(updates);
     }
 
-    console.log('Returning stats:', stats);
-    return Response.json(stats);
+    return NextResponse.json(stats);
   } catch (error) {
     console.error('Error in social-stats API:', error);
-    return Response.json({ error: 'Failed to fetch social stats', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch social stats', details: error.message }, { status: 500 });
   } finally {
     if (client) {
       await client.close();
@@ -144,8 +137,7 @@ export async function POST(request) {
   let client;
   try {
     const data = await request.json();
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-    client = await MongoClient.connect(uri);
+    client = await connectToDatabase();
     const db = client.db('social_dashboard');
     const collection = db.collection('social_stats');
 
@@ -163,10 +155,10 @@ export async function POST(request) {
       );
     }
 
-    return Response.json({ success: true });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating stats:', error);
-    return Response.json({ error: 'Failed to update stats' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update stats' }, { status: 500 });
   } finally {
     if (client) {
       await client.close();
