@@ -9,7 +9,7 @@ export default function Header() {
       <nav className="bg-black/30 rounded-lg p-4 backdrop-blur-sm">
         <div className="container mx-auto flex justify-between items-center">
           <Link href="/" className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-yellow-500">
-            Astro's Social Board
+            Astro&apos;s Social Board
           </Link>
           <div className="flex space-x-4">
             <Link 

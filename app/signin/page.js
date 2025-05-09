@@ -117,7 +117,7 @@ export default function SignIn() {
             <div className={`max-w-md w-full space-y-8 p-10 ${currentTheme.card} backdrop-blur-sm rounded-xl shadow-2xl`}>
                 <div className="text-center">
                     <h1 className={`text-4xl font-bold ${currentTheme.accent}`}>
-                        Astro's Social Board
+                        Astro&apos;s Social Board
                     </h1>
                     <h2 className={`mt-2 text-lg ${currentTheme.text}`}>Sign in to manage your social media</h2>
                 </div>

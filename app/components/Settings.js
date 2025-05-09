@@ -58,20 +58,30 @@ export default function Settings() {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      if (!session?.user?.id) return;
-      
       try {
         const response = await fetch('/api/settings');
-        const data = await response.json();
-        const userSettings = data.find(s => s.userId === session.user.id);
+        if (!response.ok) throw new Error('Failed to fetch settings');
+        const userSettings = await response.json();
         
-        if (userSettings) {
-          setActiveCharts(userSettings.activeCharts || ['youtube', 'twitch']);
-          setPlatformColors(userSettings.platformColors || platformColors);
-          setRefreshRate(userSettings.refreshRate || '5');
-          setTheme(userSettings.theme || 'dark');
-          setNotifications(userSettings.notifications || false);
-          setEmailUpdates(userSettings.emailUpdates || false);
+        if (userSettings.activeCharts) {
+          setActiveCharts(userSettings.activeCharts);
+        }
+        if (userSettings.platformColors) {
+          setPlatformColors(userSettings.platformColors);
+        }
+        if (userSettings.refreshRate) {
+          setRefreshRate(userSettings.refreshRate);
+        }
+        if (userSettings.theme) {
+          setTheme(userSettings.theme);
+        }
+        if (userSettings.notifications !== undefined) {
+          setNotifications(userSettings.notifications);
+        }
+        if (userSettings.emailUpdates !== undefined) {
+          setEmailUpdates(userSettings.emailUpdates);
+        }
+        if (userSettings.profilePicture) {
           setProfilePicture(userSettings.profilePicture || '/default-avatar.png');
         }
       } catch (error) {
@@ -81,7 +91,7 @@ export default function Settings() {
     };
 
     fetchSettings();
-  }, [session]);
+  }, [session, platformColors]);
 
   const handleProfilePictureUpload = (event) => {
     const file = event.target.files[0];

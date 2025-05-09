@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from "../components/Header";
+import Image from 'next/image';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState({
@@ -143,7 +144,13 @@ export default function ProfilePage() {
         )}
         <div className="flex flex-col items-center gap-4 mb-8">
           <div className="w-32 h-32 rounded-full bg-gray-700 overflow-hidden flex items-center justify-center">
-            <img src={profile.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+            <Image 
+              src={profile.profilePicture} 
+              alt="Profile" 
+              width={128}
+              height={128}
+              className="object-cover"
+            />
           </div>
           <input type="file" accept="image/*" id="profile-upload" className="hidden" onChange={handleProfilePictureUpload} disabled={picUploading} />
           <label htmlFor="profile-upload" className="px-4 py-2 bg-purple-600 rounded-lg cursor-pointer hover:bg-purple-700 disabled:opacity-50" style={{ opacity: picUploading ? 0.5 : 1 }}>Change Picture</label>
