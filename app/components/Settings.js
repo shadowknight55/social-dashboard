@@ -67,7 +67,7 @@ export default function Settings() {
           setActiveCharts(userSettings.activeCharts);
         }
         if (userSettings.platformColors) {
-          setPlatformColors(userSettings.platformColors);
+          setPlatformColors(p => ({...p, ...userSettings.platformColors}));
         }
         if (userSettings.refreshRate) {
           setRefreshRate(userSettings.refreshRate);
@@ -91,7 +91,7 @@ export default function Settings() {
     };
 
     fetchSettings();
-  }, [session, platformColors]);
+  }, [session]);
 
   const handleProfilePictureUpload = (event) => {
     const file = event.target.files[0];
