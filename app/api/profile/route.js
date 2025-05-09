@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-async function GET(request) {
+export async function GET(request) {
   let client;
   try {
     const session = await getServerSession(authHandler);
@@ -39,7 +39,7 @@ async function GET(request) {
   }
 }
 
-async function POST(request) {
+export async function POST(request) {
   let client;
   try {
     const session = await getServerSession(authHandler);
@@ -78,6 +78,4 @@ async function POST(request) {
       await client.close();
     }
   }
-}
-
-export { GET, POST }; 
+} 
