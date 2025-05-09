@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-const handler = async (request) => {
+async function POST(request) {
   let client;
   try {
     const session = await getServerSession(authOptions);
@@ -60,6 +60,6 @@ const handler = async (request) => {
       await client.close();
     }
   }
-};
+}
 
-export { handler as POST }; 
+export { POST }; 
