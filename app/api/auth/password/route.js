@@ -3,8 +3,31 @@ import bcrypt from 'bcryptjs';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
 
+if (!process.env.MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable inside .env');
+}
+
+const uri = process.env.MONGODB_URI;
+const options = {};
+
+let client;
+let clientPromise;
+
+if (process.env.NODE_ENV === 'development') {
+  // In development mode, use a global variable so that the value
+  // is preserved across module reloads caused by HMR (Hot Module Replacement).
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(uri, options);
+    global._mongoClientPromise = client.connect();
+  }
+  clientPromise = global._mongoClientPromise;
+} else {
+  // In production mode, it's best to not use a global variable.
+  client = new MongoClient(uri, options);
+  clientPromise = client.connect();
+}
+
 export async function POST(request) {
-  let client;
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -17,7 +40,7 @@ export async function POST(request) {
       return Response.json({ error: 'Current password and new password are required' }, { status: 400 });
     }
 
-    client = await MongoClient.connect(process.env.MONGODB_URI);
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     const usersCollection = db.collection('users');
 
@@ -50,9 +73,5 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error updating password:', error);
     return Response.json({ error: 'Failed to update password' }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 } 
