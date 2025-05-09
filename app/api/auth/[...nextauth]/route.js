@@ -108,12 +108,12 @@ export const authOptions = {
     }
 };
 
-async function GET(request) {
-    return NextAuth(request, authOptions);
+const handler = NextAuth(authOptions);
+
+export async function GET(request) {
+    return handler(request);
 }
 
-async function POST(request) {
-    return NextAuth(request, authOptions);
+export async function POST(request) {
+    return handler(request);
 }
-
-export { GET, POST };
