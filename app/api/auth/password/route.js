@@ -6,8 +6,9 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const preferredRegion = 'auto';
 
-export async function POST(request) {
+const handler = async (request) => {
   let client;
   try {
     const session = await getServerSession(authOptions);
@@ -59,4 +60,6 @@ export async function POST(request) {
       await client.close();
     }
   }
-} 
+};
+
+export { handler as POST }; 
