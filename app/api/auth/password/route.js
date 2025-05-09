@@ -1,59 +1,37 @@
-import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
-
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env');
-}
-
-const uri = process.env.MONGODB_URI;
-const options = {};
-
-let client;
-let clientPromise;
-
-if (process.env.NODE_ENV === 'development') {
-  // In development mode, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options);
-    global._mongoClientPromise = client.connect();
-  }
-  clientPromise = global._mongoClientPromise;
-} else {
-  // In production mode, it's best to not use a global variable.
-  client = new MongoClient(uri, options);
-  clientPromise = client.connect();
-}
+import { connectToDatabase } from '@/app/lib/mongodb';
+import { NextResponse } from 'next/server';
 
 export async function POST(request) {
+  let client;
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { currentPassword, newPassword } = await request.json();
     
     if (!currentPassword || !newPassword) {
-      return Response.json({ error: 'Current password and new password are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 });
     }
 
-    const client = await clientPromise;
+    client = await connectToDatabase();
     const db = client.db('social_dashboard');
     const usersCollection = db.collection('users');
 
     // Get the user
     const user = await usersCollection.findOne({ email: session.user.email });
     if (!user) {
-      return Response.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Verify current password
     const isValid = await bcrypt.compare(currentPassword, user.password);
     if (!isValid) {
-      return Response.json({ error: 'Current password is incorrect' }, { status: 400 });
+      return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
     }
 
     // Hash new password
@@ -66,12 +44,16 @@ export async function POST(request) {
     );
 
     if (result.matchedCount === 0) {
-      return Response.json({ error: 'Failed to update password' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to update password' }, { status: 500 });
     }
 
-    return Response.json({ success: true });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating password:', error);
-    return Response.json({ error: 'Failed to update password' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update password' }, { status: 500 });
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 } 
