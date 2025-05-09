@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export const authOptions = {
+const handler = NextAuth({
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
@@ -106,12 +106,6 @@ export const authOptions = {
             return session;
         }
     }
-};
+});
 
-export async function GET(request) {
-    return NextAuth(request, authOptions);
-}
-
-export async function POST(request) {
-    return NextAuth(request, authOptions);
-}
+export { handler as GET, handler as POST };
