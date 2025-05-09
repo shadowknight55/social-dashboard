@@ -1,54 +1,74 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]/route';
-import clientPromise from '@/lib/mongodb';
+import { connectToDatabase } from '@/app/lib/mongodb';
+import { NextResponse } from 'next/server';
 
 export async function GET(req) {
-  console.time('profile-api-total');
-  console.time('get-session');
-  const session = await getServerSession(authOptions);
-  console.timeEnd('get-session');
-  if (!session || !session.user?.email) {
-    console.timeEnd('profile-api-total');
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  let client;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    client = await connectToDatabase();
+    const db = client.db('social_dashboard');
+    const user = await db.collection('users').findOne({ email: session.user.email });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Only return safe fields
+    const { profilePicture, notifications, emailUpdates, email } = user;
+    return NextResponse.json({ profilePicture, notifications, emailUpdates, email });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
-  console.time('get-mongo-client');
-  const client = await clientPromise;
-  console.timeEnd('get-mongo-client');
-  const db = client.db();
-  console.time('find-user');
-  const user = await db.collection('users').findOne({ email: session.user.email });
-  console.timeEnd('find-user');
-  if (!user) {
-    console.timeEnd('profile-api-total');
-    return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
-  }
-  // Only return safe fields
-  const { profilePicture, notifications, emailUpdates, email } = user;
-  console.timeEnd('profile-api-total');
-  return new Response(JSON.stringify({ profilePicture, notifications, emailUpdates, email }), { status: 200 });
 }
 
 export async function POST(req) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user?.email) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  let client;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { profilePicture, notifications, emailUpdates } = body;
+
+    client = await connectToDatabase();
+    const db = client.db('social_dashboard');
+
+    const update = {};
+    if (profilePicture !== undefined) update.profilePicture = profilePicture;
+    if (notifications !== undefined) update.notifications = notifications;
+    if (emailUpdates !== undefined) update.emailUpdates = emailUpdates;
+
+    const result = await db.collection('users').findOneAndUpdate(
+      { email: session.user.email },
+      { $set: update },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const { email, profilePicture: pic, notifications: notif, emailUpdates: emails } = result.value;
+    return NextResponse.json({ email, profilePicture: pic, notifications: notif, emailUpdates: emails });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
-  const body = await req.json();
-  const { profilePicture, notifications, emailUpdates } = body;
-  const client = await clientPromise;
-  const db = client.db();
-  const update = {};
-  if (profilePicture !== undefined) update.profilePicture = profilePicture;
-  if (notifications !== undefined) update.notifications = notifications;
-  if (emailUpdates !== undefined) update.emailUpdates = emailUpdates;
-  const result = await db.collection('users').findOneAndUpdate(
-    { email: session.user.email },
-    { $set: update },
-    { returnDocument: 'after' }
-  );
-  if (!result.value) {
-    return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
-  }
-  const { email, profilePicture: pic, notifications: notif, emailUpdates: emails } = result.value;
-  return new Response(JSON.stringify({ email, profilePicture: pic, notifications: notif, emailUpdates: emails }), { status: 200 });
 } 
