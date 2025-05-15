@@ -5,12 +5,22 @@ import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
+// Force Node.js runtime
+export const runtime = 'nodejs';
+
 // Configure NextAuth options
 const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
     CredentialsProvider({
       name: 'Credentials',
@@ -96,6 +106,18 @@ const authOptions = {
     }
   },
   debug: process.env.NODE_ENV === 'development',
+  // Add these additional configurations
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true
+      }
+    }
+  }
 };
 
 // Export the handler
