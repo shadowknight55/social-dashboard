@@ -5,11 +5,6 @@ import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
-// Force dynamic to ensure the route is always dynamic
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
-export const runtime = 'nodejs';
-
 // Configure NextAuth options
 const authOptions = {
   providers: [
@@ -103,8 +98,5 @@ const authOptions = {
   debug: process.env.NODE_ENV === 'development',
 };
 
-// Create a single handler for both GET and POST
-const handler = NextAuth(authOptions);
-
-// Export the handler for both GET and POST methods
-export { handler as GET, handler as POST };
+// Export the handler
+export default NextAuth(authOptions); 
