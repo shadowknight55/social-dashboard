@@ -11,7 +11,16 @@ export const preferredRegion = 'auto';
 export async function POST(request) {
   let client;
   try {
-    const session = await getServerSession(request, authOptions);
+    // Create a modified request object for getServerSession
+    const url = new URL(request.url);
+    const modifiedReq = {
+      ...request,
+      query: {
+        nextauth: ['session']
+      }
+    };
+
+    const session = await getServerSession(modifiedReq, authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

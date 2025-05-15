@@ -99,10 +99,29 @@ export const authOptions = {
   debug: true,
 };
 
-export async function GET(req) {
-  return await NextAuth(req, authOptions);
+async function handler(req) {
+  try {
+    // Get the pathname from the URL
+    const url = new URL(req.url);
+    const pathname = url.pathname;
+    
+    // Extract the nextauth action from the pathname
+    const nextauthAction = pathname.split('/').pop();
+    
+    // Create a modified request object that NextAuth expects
+    const modifiedReq = {
+      ...req,
+      query: {
+        nextauth: [nextauthAction]
+      }
+    };
+
+    return await NextAuth(modifiedReq, authOptions);
+  } catch (error) {
+    console.error('NextAuth error:', error);
+    throw error;
+  }
 }
 
-export async function POST(req) {
-  return await NextAuth(req, authOptions);
-}
+export const GET = handler;
+export const POST = handler;
