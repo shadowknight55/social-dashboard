@@ -1,14 +1,16 @@
-import NextAuth from 'next-auth/next';
+import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
+// Force dynamic to ensure the route is always dynamic
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
-export const preferredRegion = 'auto';
 
+// Configure NextAuth options
 const authOptions = {
   providers: [
     GoogleProvider({
@@ -24,19 +26,17 @@ const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.error('Missing credentials');
           throw new Error('Please enter an email and password');
         }
 
         try {
           const client = await clientPromise;
-          console.log('MongoDB client connected successfully');
           const db = client.db();
           const user = await db.collection('users').findOne({ email: credentials.email });
-          console.log('User lookup result:', user ? 'User found' : 'No user found');
 
           if (!user) {
             if (credentials.username) {
+              // Create new user
               const hashedPassword = await bcrypt.hash(credentials.password, 10);
               const newUser = {
                 email: credentials.email,
@@ -65,7 +65,7 @@ const authOptions = {
             name: user.username,
           };
         } catch (error) {
-          console.error('MongoDB error:', error);
+          console.error('Auth error:', error);
           throw error;
         }
       }
@@ -75,16 +75,20 @@ const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: '/signin',
     error: '/signin',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
         token.username = user.name;
+      }
+      if (account) {
+        token.provider = account.provider;
       }
       return token;
     },
@@ -92,13 +96,16 @@ const authOptions = {
       if (token) {
         session.user.id = token.id;
         session.user.username = token.username;
+        session.user.provider = token.provider;
       }
       return session;
     }
   },
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
 };
 
+// Create a single handler for both GET and POST
 const handler = NextAuth(authOptions);
 
+// Export the handler for both GET and POST methods
 export { handler as GET, handler as POST };
