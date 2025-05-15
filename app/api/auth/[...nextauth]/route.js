@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth/next';
+import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export const authOptions = {
+const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -99,8 +99,10 @@ export const authOptions = {
   debug: true,
 };
 
-const handler = async (req, res) => {
-  return await NextAuth(req, res, authOptions);
-};
+export async function GET(req) {
+  return await NextAuth(req, authOptions);
+}
 
-export { handler as GET, handler as POST };
+export async function POST(req) {
+  return await NextAuth(req, authOptions);
+}
