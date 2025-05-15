@@ -5,7 +5,8 @@ import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
-export const authOptions = {
+// Configure NextAuth options
+const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -97,5 +98,5 @@ export const authOptions = {
   debug: process.env.NODE_ENV === 'development',
 };
 
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST }; 
+// Export the handler
+export default NextAuth(authOptions);
