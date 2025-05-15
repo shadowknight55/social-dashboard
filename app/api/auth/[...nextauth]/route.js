@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export const authOptions = {
+const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -99,29 +99,6 @@ export const authOptions = {
   debug: true,
 };
 
-async function handler(req) {
-  try {
-    // Get the pathname from the URL
-    const url = new URL(req.url);
-    const pathname = url.pathname;
-    
-    // Extract the nextauth action from the pathname
-    const nextauthAction = pathname.split('/').pop();
-    
-    // Create a modified request object that NextAuth expects
-    const modifiedReq = {
-      ...req,
-      query: {
-        nextauth: [nextauthAction]
-      }
-    };
+const handler = NextAuth(authOptions);
 
-    return await NextAuth(modifiedReq, authOptions);
-  } catch (error) {
-    console.error('NextAuth error:', error);
-    throw error;
-  }
-}
-
-export const GET = handler;
-export const POST = handler;
+export { handler as GET, handler as POST };
