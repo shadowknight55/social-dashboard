@@ -3,9 +3,10 @@ import { connectToDatabase } from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
 
-export async function GET(request) {
+export async function GET() {
   let client;
   try {
     const session = await getServerSession();

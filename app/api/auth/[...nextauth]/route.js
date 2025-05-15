@@ -36,7 +36,6 @@ const authOptions = {
 
           if (!user) {
             if (credentials.username) {
-              // Create new user
               const hashedPassword = await bcrypt.hash(credentials.password, 10);
               const newUser = {
                 email: credentials.email,
