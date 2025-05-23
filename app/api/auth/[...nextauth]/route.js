@@ -5,96 +5,98 @@ import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
-// Configure NextAuth options
-const authOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
-    CredentialsProvider({
-      name: 'Credentials',
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-        username: { label: "Username", type: "text" }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Please enter an email and password');
-        }
+const handler = async (req, res) => {
+  return await NextAuth(req, res, {
+    providers: [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      }),
+      CredentialsProvider({
+        name: 'Credentials',
+        credentials: {
+          email: { label: "Email", type: "email" },
+          password: { label: "Password", type: "password" },
+          username: { label: "Username", type: "text" }
+        },
+        async authorize(credentials) {
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error('Please enter an email and password');
+          }
 
-        try {
-          const client = await clientPromise;
-          const db = client.db();
-          const user = await db.collection('users').findOne({ email: credentials.email });
+          try {
+            const client = await clientPromise;
+            const db = client.db();
+            const user = await db.collection('users').findOne({ email: credentials.email });
 
-          if (!user) {
-            if (credentials.username) {
-              const hashedPassword = await bcrypt.hash(credentials.password, 10);
-              const newUser = {
-                email: credentials.email,
-                password: hashedPassword,
-                username: credentials.username,
-                createdAt: new Date(),
-              };
-              const result = await db.collection('users').insertOne(newUser);
-              return {
-                id: result.insertedId.toString(),
-                email: newUser.email,
-                name: newUser.username,
-              };
+            if (!user) {
+              if (credentials.username) {
+                const hashedPassword = await bcrypt.hash(credentials.password, 10);
+                const newUser = {
+                  email: credentials.email,
+                  password: hashedPassword,
+                  username: credentials.username,
+                  createdAt: new Date(),
+                };
+                const result = await db.collection('users').insertOne(newUser);
+                return {
+                  id: result.insertedId.toString(),
+                  email: newUser.email,
+                  name: newUser.username,
+                };
+              }
+              throw new Error('No user found with this email');
             }
-            throw new Error('No user found with this email');
-          }
 
-          const isValid = await bcrypt.compare(credentials.password, user.password);
-          if (!isValid) {
-            throw new Error('Invalid password');
-          }
+            const isValid = await bcrypt.compare(credentials.password, user.password);
+            if (!isValid) {
+              throw new Error('Invalid password');
+            }
 
-          return {
-            id: user._id.toString(),
-            email: user.email,
-            name: user.username,
-          };
-        } catch (error) {
-          console.error('Auth error:', error);
-          throw error;
+            return {
+              id: user._id.toString(),
+              email: user.email,
+              name: user.username,
+            };
+          } catch (error) {
+            console.error('Auth error:', error);
+            throw error;
+          }
         }
-      }
-    })
-  ],
-  adapter: MongoDBAdapter(clientPromise),
-  secret: process.env.NEXTAUTH_SECRET,
-  session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  callbacks: {
-    async jwt({ token, user, account }) {
-      if (user) {
-        token.id = user.id;
-        token.username = user.name;
-      }
-      if (account) {
-        token.provider = account.provider;
-      }
-      return token;
+      })
+    ],
+    adapter: MongoDBAdapter(clientPromise),
+    secret: process.env.NEXTAUTH_SECRET,
+    session: {
+      strategy: 'jwt',
+      maxAge: 30 * 24 * 60 * 60, // 30 days
     },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id;
-        session.user.username = token.username;
-        session.user.provider = token.provider;
+    callbacks: {
+      async jwt({ token, user, account }) {
+        if (user) {
+          token.id = user.id;
+          token.username = user.name;
+        }
+        if (account) {
+          token.provider = account.provider;
+        }
+        return token;
+      },
+      async session({ session, token }) {
+        if (token) {
+          session.user.id = token.id;
+          session.user.username = token.username;
+          session.user.provider = token.provider;
+        }
+        return session;
       }
-      return session;
-    }
-  },
-  debug: process.env.NODE_ENV === 'development',
+    },
+    debug: process.env.NODE_ENV === 'development',
+    pages: {
+      signIn: '/auth/signin',
+      error: '/auth/error',
+    },
+  });
 };
 
-// Export the handler using the new App Router format
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
-export { authOptions }; 
+export { handler as GET, handler as POST }; 
