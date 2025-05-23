@@ -96,4 +96,5 @@ const authOptions = {
 
 // Export the handler using the new App Router format
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST }; 
+export { handler as GET, handler as POST };
+export { authOptions }; 
