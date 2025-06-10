@@ -1,4 +1,4 @@
-import { connectToDatabase } from '@/app/lib/mongodb';
+import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 const generateRandomStats = (platform, date) => {
@@ -48,9 +48,8 @@ const getDateRange = (range) => {
 };
 
 export async function GET(request) {
-  let client;
   try {
-    client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     const collection = db.collection('social_stats');
 
@@ -126,18 +125,13 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error in social-stats API:', error);
     return NextResponse.json({ error: 'Failed to fetch social stats', details: error.message }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 }
 
 export async function POST(request) {
-  let client;
   try {
     const data = await request.json();
-    client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     const collection = db.collection('social_stats');
 
@@ -159,9 +153,5 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error updating stats:', error);
     return NextResponse.json({ error: 'Failed to update stats' }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 } 
