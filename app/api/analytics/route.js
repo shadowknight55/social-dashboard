@@ -1,4 +1,4 @@
-import { connectToDatabase } from '@/app/lib/mongodb';
+import clientPromise from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 const generateTrendingStats = (platform, date, baseStats) => {
@@ -55,9 +55,8 @@ const getDateRange = (range) => {
 };
 
 export async function GET(request) {
-  let client;
   try {
-    client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     const collection = db.collection('analytics_stats');
 
@@ -131,11 +130,7 @@ export async function GET(request) {
       data: analyticsData
     });
   } catch (error) {
-    console.error('Error fetching analytics:', error);
+    console.error('Error in analytics API:', error);
     return NextResponse.json({ error: 'Failed to fetch analytics data', details: error.message }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 } 

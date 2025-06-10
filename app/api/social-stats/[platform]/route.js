@@ -1,11 +1,9 @@
-import { MongoClient } from 'mongodb';
+import clientPromise from '@/app/lib/mongodb';
 
 export async function DELETE(request, { params }) {
-  let client;
   try {
     const { platform } = params;
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-    client = await MongoClient.connect(uri);
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     
     // Remove from social_stats collection
@@ -24,9 +22,5 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error('Error deleting platform stats:', error);
     return Response.json({ error: 'Failed to delete platform stats' }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 } 
