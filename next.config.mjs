@@ -1,10 +1,5 @@
 /** @type {import('next').NextConfig} */
 
-console.log(
-  'NEXT_CONFIG_MONGODB_URI: ',
-  process.env.MONGODB_URI?.substring(0, 15) || 'NOT FOUND'
-);
-
 const nextConfig = {
   serverExternalPackages: ['mongodb'],
   typescript: {
