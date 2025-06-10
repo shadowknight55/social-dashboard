@@ -1,3 +1,4 @@
+import clientPromise from '../lib/mongodb.js';
 import { MongoClient } from 'mongodb';
 
 const generateTrendingStats = (platform, date, baseStats) => {
@@ -54,9 +55,8 @@ const getInitialStats = (platform) => {
 
 async function initializeDatabase() {
   try {
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
     console.log('Connecting to MongoDB...');
-    const client = await MongoClient.connect(uri);
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     
     // Create collections if they don't exist
@@ -98,7 +98,6 @@ async function initializeDatabase() {
     await db.collection('analytics_stats').createIndex({ date: -1 });
     
     console.log('Database initialized successfully');
-    await client.close();
     process.exit(0);
   } catch (error) {
     console.error('Error initializing database:', error);
