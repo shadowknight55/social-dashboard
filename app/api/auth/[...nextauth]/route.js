@@ -6,6 +6,7 @@ import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
 export const authOptions = {
+  adapter: MongoDBAdapter(clientPromise),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -23,76 +24,67 @@ export const authOptions = {
           throw new Error('Please enter an email and password');
         }
 
-        try {
-          const client = await clientPromise;
-          const db = client.db();
-          const user = await db.collection('users').findOne({ email: credentials.email });
+        const client = await clientPromise;
+        const usersCollection = client.db().collection("users");
+        const user = await usersCollection.findOne({ email: credentials.email });
 
-          if (!user) {
-            if (credentials.username) {
-              const hashedPassword = await bcrypt.hash(credentials.password, 10);
-              const newUser = {
-                email: credentials.email,
-                password: hashedPassword,
-                username: credentials.username,
-                createdAt: new Date(),
-              };
-              const result = await db.collection('users').insertOne(newUser);
-              return {
-                id: result.insertedId.toString(),
-                email: newUser.email,
-                name: newUser.username,
-              };
-            }
-            throw new Error('No user found with this email');
-          }
-
-          const isValid = await bcrypt.compare(credentials.password, user.password);
-          if (!isValid) {
-            throw new Error('Invalid password');
-          }
-
-          return {
-            id: user._id.toString(),
-            email: user.email,
-            name: user.username,
-          };
-        } catch (error) {
-          console.error('Auth error:', error);
-          throw error;
+        if (!user) {
+          // For new credential-based users, you might want to handle registration separately
+          // or allow it here. For now, we assume only existing users can sign in.
+          return null;
         }
+
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+
+        if (!isValid) {
+          return null;
+        }
+
+        return {
+          id: user._id.toString(),
+          email: user.email,
+          name: user.username,
+        };
       }
     })
   ],
-  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user, account }) {
-      if (user) {
-        token.id = user.id;
-        token.username = user.name;
-      }
-      if (account) {
-        token.provider = account.provider;
-      }
-      return token;
-    },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
-        session.user.username = token.username;
-        session.user.provider = token.provider;
+        session.user.name = token.name;
+        session.user.email = token.email;
       }
       return session;
-    }
+    },
+    async jwt({ token, user, account }) {
+      const client = await clientPromise;
+      const db = client.db();
+      const usersCollection = db.collection('users');
+      
+      const db_user = await usersCollection.findOne({ email: token.email });
+
+      if (!db_user) {
+        if (user) {
+          token.id = user?.id;
+        }
+        return token;
+      }
+
+      return {
+        id: db_user._id.toString(),
+        name: db_user.name,
+        email: db_user.email,
+      };
+    },
   },
+  secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
   pages: {
     signIn: '/auth/signin',
-    error: '/auth/error',
   },
 };
 
