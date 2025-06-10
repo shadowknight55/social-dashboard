@@ -1,4 +1,4 @@
-import clientPromise from '@/app/lib/mongodb';
+import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 const generateTrendingStats = (platform, date, baseStats) => {

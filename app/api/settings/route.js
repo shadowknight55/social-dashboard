@@ -1,10 +1,9 @@
-import { connectToDatabase } from '@/app/lib/mongodb';
+import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  let client;
   try {
-    client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     const collection = db.collection('settings');
 
@@ -15,18 +14,13 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching settings:', error);
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 }
 
 export async function POST(request) {
-  let client;
   try {
     const data = await request.json();
-    client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     const collection = db.collection('settings');
 
@@ -41,9 +35,5 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error updating settings:', error);
     return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 } 
