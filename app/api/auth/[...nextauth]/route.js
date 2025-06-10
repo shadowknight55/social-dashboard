@@ -5,15 +5,6 @@ import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
-console.log(`[AUTH_ROUTE] Type of clientPromise is: ${typeof clientPromise}`);
-console.log(`[AUTH_ROUTE] Is clientPromise a promise? ${clientPromise && typeof clientPromise.then === 'function'}`);
-if (clientPromise) {
-  clientPromise.then(
-    () => console.log('[AUTH_ROUTE] clientPromise resolved successfully.'),
-    err => console.error('[AUTH_ROUTE] clientPromise was rejected:', err)
-  );
-}
-
 export const authOptions = {
   adapter: MongoDBAdapter(clientPromise),
   providers: [
@@ -30,7 +21,7 @@ export const authOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
-        }
+        } 
 
         const client = await clientPromise;
         const usersCollection = client.db().collection('users');
