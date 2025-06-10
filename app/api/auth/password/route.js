@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { getServerSession } from 'next-auth';
-import { connectToDatabase } from '@/lib/mongodb';
+import clientPromise from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,6 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
 export async function POST(request) {
-  let client;
   try {
     const session = await getServerSession();
     if (!session?.user?.email) {
@@ -21,7 +20,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 });
     }
 
-    client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db('social_dashboard');
     const usersCollection = db.collection('users');
 
@@ -54,9 +53,5 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error updating password:', error);
     return NextResponse.json({ error: 'Failed to update password' }, { status: 500 });
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 } 
