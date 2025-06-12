@@ -1,12 +1,10 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
 import { connectToDb } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
 export const authOptions = {
-  adapter: MongoDBAdapter(connectToDb()),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -19,31 +17,23 @@ export const authOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        } 
-
         const client = await connectToDb();
         const usersCollection = client.db().collection('users');
         const user = await usersCollection.findOne({ email: credentials.email });
 
-        if (!user) {
+        if (!user || !user.password) {
           return null;
         }
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
+        const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) {
           return null;
         }
 
         return {
           id: user._id.toString(),
-          email: user.email,
           name: user.name,
+          email: user.email,
         };
       },
     }),
@@ -52,13 +42,30 @@ export const authOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id;
-        session.user.name = token.name;
-        session.user.email = token.email;
+    async signIn({ user, account }) {
+      if (account.provider === 'google') {
+        const client = await connectToDb();
+        const usersCollection = client.db().collection('users');
+        
+        const { name, email } = user;
+        
+        let dbUser = await usersCollection.findOne({ email });
+
+        if (!dbUser) {
+          const result = await usersCollection.insertOne({
+            name,
+            email,
+            provider: 'google',
+            createdAt: new Date(),
+          });
+          dbUser = { _id: result.insertedId };
+        }
+        
+        user.id = dbUser._id.toString();
+        return true;
       }
-      return session;
+      // For credentials, authorize has already validated
+      return true;
     },
     async jwt({ token, user }) {
       if (user) {
@@ -66,12 +73,18 @@ export const authOptions = {
       }
       return token;
     },
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id;
+      }
+      return session;
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
   pages: {
     signIn: '/auth/signin',
   },
+  debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);
