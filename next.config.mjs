@@ -1,10 +1,7 @@
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
-  experimental: {
-    esmExternals: true,
-  },
-  serverExternalPackages: ['mongodb'],
+  serverComponentsExternalPackages: ['mongodb'],
   typescript: {
     // !! WARN !!
     // Dangerously allow production builds to successfully complete even if
