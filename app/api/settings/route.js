@@ -1,9 +1,9 @@
-import clientPromise from '@/lib/mongodb';
+import { connectToDb } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const client = await clientPromise;
+    const client = await connectToDb();
     const db = client.db('social_dashboard');
     const collection = db.collection('settings');
 
@@ -20,7 +20,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const data = await request.json();
-    const client = await clientPromise;
+    const client = await connectToDb();
     const db = client.db('social_dashboard');
     const collection = db.collection('settings');
 

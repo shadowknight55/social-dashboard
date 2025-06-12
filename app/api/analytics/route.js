@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import { connectToDb } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 const generateTrendingStats = (platform, date, baseStats) => {
@@ -56,7 +56,7 @@ const getDateRange = (range) => {
 
 export async function GET(request) {
   try {
-    const client = await clientPromise;
+    const client = await connectToDb();
     const db = client.db('social_dashboard');
     const collection = db.collection('analytics_stats');
 

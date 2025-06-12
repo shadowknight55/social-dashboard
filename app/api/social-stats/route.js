@@ -1,4 +1,4 @@
-import clientPromise from '@/lib/mongodb';
+import { connectToDb } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 const generateRandomStats = (platform, date) => {
@@ -49,7 +49,7 @@ const getDateRange = (range) => {
 
 export async function GET(request) {
   try {
-    const client = await clientPromise;
+    const client = await connectToDb();
     const db = client.db('social_dashboard');
     const collection = db.collection('social_stats');
 
@@ -131,7 +131,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const data = await request.json();
-    const client = await clientPromise;
+    const client = await connectToDb();
     const db = client.db('social_dashboard');
     const collection = db.collection('social_stats');
 

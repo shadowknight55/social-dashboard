@@ -1,9 +1,9 @@
-import clientPromise from '@/lib/mongodb';
+import { connectToDb } from '@/lib/mongodb';
 
 export async function DELETE(request, { params }) {
   try {
     const { platform } = params;
-    const client = await clientPromise;
+    const client = await connectToDb();
     const db = client.db('social_dashboard');
     
     // Remove from social_stats collection

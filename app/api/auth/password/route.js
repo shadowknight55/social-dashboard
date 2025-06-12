@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { getServerSession } from 'next-auth';
-import clientPromise from '@/lib/mongodb';
+import { connectToDb } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 });
     }
 
-    const client = await clientPromise;
+    const client = await connectToDb();
     const db = client.db('social_dashboard');
     const usersCollection = db.collection('users');
 
